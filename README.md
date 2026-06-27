@@ -79,7 +79,7 @@ Tools should return structured, task-oriented data for the request.
 
 ## Setup
 
-TODO after implementation: replace this section with exact commands.
+Setup commands are not available yet because the MVP is not implemented.
 
 Planned prerequisites:
 
@@ -100,7 +100,7 @@ Cloudflare Workers Builds are not used for this repository.
 
 ## Usage
 
-TODO after implementation: replace with working commands.
+Usage commands are not available yet because the MVP is not implemented.
 
 Planned flow:
 

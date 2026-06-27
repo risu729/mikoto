@@ -40,8 +40,7 @@
   uses WebSocket attachment data needed to restore hibernated connections.
 - Process one tool call at a time per bridge. Return a clear bridge-busy error
   for concurrent calls.
-- Use a fixed 5-minute max tool-call timeout. Per-tool timeout config is future
-  work.
+- Use a fixed 5-minute max tool-call timeout.
 - If the relay loses the selected bridge connection during a tool call, abort
   the call with a clear connection-lost error.
 - Use stdout logs only for bridge and relay in the MVP.
