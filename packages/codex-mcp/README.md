@@ -1,7 +1,31 @@
 # @mikoto/codex-mcp
 
-Standalone Codex MCP server scaffold.
+Standalone MCP server that exposes Codex as a small tool surface for MCP
+clients.
 
-This package will own Codex app-server lifecycle and expose semantic Codex tools
-such as `codex_task`, `codex_check`, and the general-purpose read-only
-`codex_chrome_read`.
+This first implementation intentionally includes only non-Chrome tools:
+
+- `codex_task`: start a bounded Codex CLI task.
+- `codex_check`: check task status and retrieve captured stdout/stderr.
+
+`codex_chrome_read` is planned for a later PR.
+
+## Run
+
+From the repository root:
+
+```sh
+mise run codex-mcp
+```
+
+The server uses stdio, so MCP clients should start it as a local command. During
+task execution it resolves Codex with `mise x codex@latest -- codex` when `mise`
+is available, and falls back to `bunx codex`.
+
+## Reference
+
+The initial design was informed by reading
+[`xihuai18/codex-mcp`](https://github.com/xihuai18/codex-mcp), especially its
+use of the official MCP SDK and a `codex_check` polling pattern. This package is
+an independent implementation scoped to Mikoto's smaller first PR and does not
+copy code from that project.

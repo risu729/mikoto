@@ -7,18 +7,9 @@ const CODEX_MCP_TOOLS = [
 		description: "Check Codex task or session state.",
 		name: "codex_check",
 	},
-	{
-		description: "Read structured information from an allowed browser context without mutation.",
-		name: "codex_chrome_read",
-	},
 ] as const;
 
-const resolveCodexCommand = (hasMise = true): string[] => {
-	if (hasMise) {
-		return ["mise", "x", "codex@latest", "--", "codex"];
-	}
+type CodexMcpToolName = (typeof CODEX_MCP_TOOLS)[number]["name"];
 
-	return ["bunx", "codex"];
-};
-
-export { CODEX_MCP_TOOLS, resolveCodexCommand };
+export { CODEX_MCP_TOOLS };
+export type { CodexMcpToolName };
