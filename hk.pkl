@@ -7,6 +7,7 @@ local picked = helpers.pick(new Listing {
   "tsc"
   "github-actions"
   "tombi"
+  "rumdl"
   "yaml"
   "typos"
   "hygiene"
