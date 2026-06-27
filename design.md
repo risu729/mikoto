@@ -31,7 +31,6 @@ Core design rule:
   connects outbound to the relay.
 - `packages/codex-mcp`: standalone MCP server that owns Codex app-server
   integration.
-- `packages/app`: optional ChatGPT App UI resources/components.
 
 Use TypeScript on Bun for local packages. Use the official MCP TypeScript SDK
 where practical.
@@ -138,8 +137,7 @@ per-socket data needed to restore hibernated WebSocket sessions. Do not store
 secrets, local paths, environment variables, raw backend config, cookies,
 storage, tokens, raw HTML, or tool result payloads in bridge metadata.
 
-The exposed-tool snapshot is static for the MVP bridge session. Dynamic backend
-add/remove and snapshot refresh are future work.
+The exposed-tool snapshot is static for the MVP bridge session.
 
 Implementation notes:
 
@@ -187,12 +185,11 @@ The relay strips `bridgeId` before forwarding actual tool arguments to the
 selected bridge.
 
 For the MVP, each bridge processes one tool call at a time. If a selected bridge
-already has an in-flight call, return a clear bridge-busy error. Concurrent
-calls are future work.
+already has an in-flight call, return a clear bridge-busy error.
 
 Tool calls have a fixed 5-minute wall-clock timeout. Per-tool timeout
-configuration is future work. If the selected bridge connection is lost during a
-call, abort the call with a connection-lost error.
+configuration is not part of the MVP. If the selected bridge connection is lost
+during a call, abort the call with a connection-lost error.
 
 Expected error cases:
 
@@ -225,7 +222,7 @@ Responsibilities:
 - terminate owned backend processes when the bridge exits
 
 If any configured backend fails to start or fails tool discovery, fail the whole
-bridge. Partial degraded startup is future work.
+bridge.
 
 Support relay connection settings from both `mikoto.toml` and environment
 variables so tests can target a local relay server.
@@ -261,15 +258,14 @@ transports.
 Implement `stdio` first. Configured `http` backends should return a clear
 unimplemented error until HTTP support lands.
 
-Do not hardcode OS-specific behavior. WSL-specific launch modes are future work.
+Do not hardcode OS-specific behavior.
 
 ## Codex MCP Server
 
 `mikoto-codex-mcp` is a standalone local MCP server. Do not bundle it into the
 bridge process.
 
-For the MVP, `mikoto-codex-mcp` launches and owns Codex app-server. Connecting
-to an already-running Codex app-server can be added later as an explicit mode.
+For the MVP, `mikoto-codex-mcp` launches and owns Codex app-server.
 
 Codex CLI resolution:
 
@@ -343,8 +339,7 @@ filtered later.
 
 ## Configuration
 
-Use project-local `mikoto.toml` with schema validation. Per-user global config
-can be added later as a layered source.
+Use project-local `mikoto.toml` with schema validation.
 
 Maintain the schema in `packages/protocol`.
 
@@ -358,7 +353,7 @@ Initial config shape should cover:
 - backend args
 - backend working directory
 - backend environment
-- URL for future HTTP backend transports
+- URL for HTTP backend transports
 - tool aliases
 - exposure rules
 - policy binding
@@ -450,8 +445,7 @@ is stable.
 
 Use stdout logs only for bridge and relay in the MVP.
 
-Persistent logs are future work and must account for sensitive
-arguments/results.
+Persistent logs are not part of the MVP.
 
 Stdout logs should include operational metadata such as component, bridge id,
 tool name, status, duration, and error code. Do not log full tool arguments or
@@ -463,8 +457,8 @@ Benefits:
 
 - `mikoto` remains backend-agnostic.
 - Codex is just one local MCP server.
-- Discord, filesystem, shell, browser-devtools, or WSL repo tools can be added
-  without touching Codex integration.
+- Additional backend MCP servers can be added without touching Codex
+  integration.
 - Other MCP clients can use `mikoto-codex-mcp` directly if useful.
 - Codex app-server protocol changes are isolated.
 - The bridge can stay small and stable.
@@ -493,30 +487,8 @@ Use these as references, not as direct replacements:
   clients, and MCP tools.
 - Cloudflare Workers and Agents MCP examples: references for Worker/Durable
   Object relay patterns.
-- Cloudflare MCP Server Portal: future reference only if it fits later
-  requirements.
 - `mcp-proxy` and `supergateway`: transport references for stdio-to-remote MCP
   bridging.
 - Docker MCP Gateway: registry/gateway/isolation reference.
 - AgentBridge and OpenClaw Codex app-server plugins: Codex bridge references,
   not general-purpose `mikoto` replacements.
-
-## Future Improvements
-
-- Remove this file after implementation is complete.
-- Automatic bridge-to-relay reconnection after connection loss.
-- Dynamic backend MCP server add/remove and tool snapshot refresh.
-- Lazy backend MCP server startup.
-- Partial degraded bridge startup.
-- Concurrent calls per bridge or backend.
-- Per-tool timeout configuration.
-- Explicit user-initiated tool-call cancellation once ChatGPT App/MCP
-  cancellation behavior is confirmed.
-- Persistent relay/bridge logs with redaction.
-- WSL-specific launch mode.
-- HTTP MCP backend transport.
-- Per-user global config layering.
-- More backend MCP servers and richer policy presets.
-- Connecting to an already-running Codex app-server.
-- Cloudflare MCP Server Portal as a future reference if it fits later
-  requirements.
