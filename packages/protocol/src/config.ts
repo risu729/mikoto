@@ -1,46 +1,56 @@
 import { z } from "zod";
 
-export const ToolAliasSchema = z.object({
-  name: z.string().min(1),
-  target: z.string().min(1)
+const ToolAliasSchema = z.object({
+	name: z.string().min(1),
+	target: z.string().min(1),
 });
 
 const BaseServerSchema = z.object({
-  id: z.string().min(1),
-  aliases: z.array(ToolAliasSchema).default([])
+	aliases: z.array(ToolAliasSchema).default([]),
+	id: z.string().min(1),
 });
 
-export const StdioServerSchema = BaseServerSchema.extend({
-  transport: z.literal("stdio"),
-  command: z.string().min(1),
-  args: z.array(z.string()).default([]),
-  cwd: z.string().optional(),
-  env: z.record(z.string(), z.string()).default({})
+const StdioServerSchema = BaseServerSchema.extend({
+	args: z.array(z.string()).default([]),
+	command: z.string().min(1),
+	cwd: z.string().optional(),
+	env: z.record(z.string(), z.string()).default({}),
+	transport: z.literal("stdio"),
 });
 
-export const HttpServerSchema = BaseServerSchema.extend({
-  transport: z.literal("http"),
-  url: z.url()
+const HttpServerSchema = BaseServerSchema.extend({
+	transport: z.literal("http"),
+	url: z.url(),
 });
 
-export const BackendServerSchema = z.discriminatedUnion("transport", [
-  StdioServerSchema,
-  HttpServerSchema
+const BackendServerSchema = z.discriminatedUnion("transport", [
+	StdioServerSchema,
+	HttpServerSchema,
 ]);
 
-export const MikotoConfigSchema = z.object({
-  bridge: z
-    .object({
-      id: z.string().min(1).optional()
-    })
-    .default({}),
-  relay: z.object({
-    url: z.string().min(1)
-  }),
-  servers: z.array(BackendServerSchema).default([])
+const MikotoConfigSchema = z.object({
+	bridge: z
+		.object({
+			id: z.string().min(1).optional(),
+		})
+		.default({}),
+	relay: z.object({
+		url: z.string().min(1),
+	}),
+	servers: z.array(BackendServerSchema).default([]),
 });
 
-export type ToolAlias = z.infer<typeof ToolAliasSchema>;
-export type BackendServer = z.infer<typeof BackendServerSchema>;
-export type MikotoConfig = z.infer<typeof MikotoConfigSchema>;
+type ToolAlias = z.infer<typeof ToolAliasSchema>;
+type BackendServer = z.infer<typeof BackendServerSchema>;
+type MikotoConfig = z.infer<typeof MikotoConfigSchema>;
 
+export {
+	type BackendServer,
+	BackendServerSchema,
+	HttpServerSchema,
+	type MikotoConfig,
+	MikotoConfigSchema,
+	StdioServerSchema,
+	type ToolAlias,
+	ToolAliasSchema,
+};

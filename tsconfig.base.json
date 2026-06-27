@@ -1,7 +1,7 @@
 {
-  "extends": "@risu729/tsconfigs/bundler",
-  "compilerOptions": {
-    "types": ["node", "@cloudflare/workers-types"]
-  },
-  "exclude": ["dist", "node_modules"]
+	"extends": "@risu729/tsconfigs/bundler",
+	"compilerOptions": {
+		"types": ["node", "@cloudflare/workers-types"]
+	},
+	"exclude": ["dist", "node_modules"]
 }

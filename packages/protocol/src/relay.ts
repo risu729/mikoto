@@ -1,52 +1,66 @@
 import { z } from "zod";
 
-export const BridgeStatusSchema = z.enum(["connected", "busy", "disconnected"]);
+const BridgeStatusSchema = z.enum(["connected", "busy", "disconnected"]);
 
-export const ToolInfoSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-  inputSchema: z.unknown().optional()
+const ToolInfoSchema = z.object({
+	description: z.string().optional(),
+	inputSchema: z.unknown().optional(),
+	name: z.string().min(1),
 });
 
-export const BridgeMetadataSchema = z.object({
-  id: z.string().min(1),
-  os: z.string().min(1),
-  status: BridgeStatusSchema,
-  lastHeartbeat: z.string().datetime(),
-  tools: z.array(z.string())
+const BridgeMetadataSchema = z.object({
+	id: z.string().min(1),
+	lastHeartbeat: z.string().datetime(),
+	os: z.string().min(1),
+	status: BridgeStatusSchema,
+	tools: z.array(z.string()),
 });
 
-export const BridgeHelloMessageSchema = z.object({
-  type: z.literal("bridge.hello"),
-  bridge: BridgeMetadataSchema,
-  tools: z.array(ToolInfoSchema)
+const BridgeHelloMessageSchema = z.object({
+	bridge: BridgeMetadataSchema,
+	tools: z.array(ToolInfoSchema),
+	type: z.literal("bridge.hello"),
 });
 
-export const ToolCallRequestSchema = z.object({
-  type: z.literal("tool.call"),
-  id: z.string().min(1),
-  tool: z.string().min(1),
-  bridgeId: z.string().min(1).optional(),
-  arguments: z.record(z.string(), z.unknown()).default({})
+const ToolCallRequestSchema = z.object({
+	arguments: z.record(z.string(), z.unknown()).default({}),
+	bridgeId: z.string().min(1).optional(),
+	id: z.string().min(1),
+	tool: z.string().min(1),
+	type: z.literal("tool.call"),
 });
 
-export const ToolCallResultSchema = z.object({
-  type: z.literal("tool.result"),
-  id: z.string().min(1),
-  ok: z.boolean(),
-  result: z.unknown().optional(),
-  error: z
-    .object({
-      code: z.string().min(1),
-      message: z.string().min(1)
-    })
-    .optional()
+const ToolCallResultSchema = z.object({
+	error: z
+		.object({
+			code: z.string().min(1),
+			message: z.string().min(1),
+		})
+		.optional(),
+	id: z.string().min(1),
+	ok: z.boolean(),
+	result: z.unknown().optional(),
+	type: z.literal("tool.result"),
 });
 
-export type BridgeStatus = z.infer<typeof BridgeStatusSchema>;
-export type ToolInfo = z.infer<typeof ToolInfoSchema>;
-export type BridgeMetadata = z.infer<typeof BridgeMetadataSchema>;
-export type BridgeHelloMessage = z.infer<typeof BridgeHelloMessageSchema>;
-export type ToolCallRequest = z.infer<typeof ToolCallRequestSchema>;
-export type ToolCallResult = z.infer<typeof ToolCallResultSchema>;
+type BridgeStatus = z.infer<typeof BridgeStatusSchema>;
+type ToolInfo = z.infer<typeof ToolInfoSchema>;
+type BridgeMetadata = z.infer<typeof BridgeMetadataSchema>;
+type BridgeHelloMessage = z.infer<typeof BridgeHelloMessageSchema>;
+type ToolCallRequest = z.infer<typeof ToolCallRequestSchema>;
+type ToolCallResult = z.infer<typeof ToolCallResultSchema>;
 
+export {
+	type BridgeHelloMessage,
+	BridgeHelloMessageSchema,
+	type BridgeMetadata,
+	BridgeMetadataSchema,
+	type BridgeStatus,
+	BridgeStatusSchema,
+	type ToolCallRequest,
+	ToolCallRequestSchema,
+	type ToolCallResult,
+	ToolCallResultSchema,
+	type ToolInfo,
+	ToolInfoSchema,
+};

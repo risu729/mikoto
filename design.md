@@ -1,39 +1,55 @@
 # mikoto implementation design
 
-This document is a temporary implementation guide. Remove it after the implementation is in place and the durable user-facing documentation lives in `README.md` and code-level docs.
+This document is a temporary implementation guide. Remove it after the
+implementation is in place and the durable user-facing documentation lives in
+`README.md` and code-level docs.
 
 ## Product Goal
 
-Build a local MCP gateway that lets ChatGPT call explicitly configured local MCP servers through a Cloudflare relay.
+Build a local MCP gateway that lets ChatGPT call explicitly configured local MCP
+servers through a Cloudflare relay.
 
-The MVP is a general-purpose, read-only Codex browser read tool. It should allow natural-language read requests against allowed local browser context through Codex app-server and the official `@Chrome` integration. It must not be GitHub-notifications-specific.
+The MVP is a general-purpose, read-only Codex browser read tool. It should allow
+natural-language read requests against allowed local browser context through
+Codex app-server and the official `@Chrome` integration. It must not be
+GitHub-notifications-specific.
 
 Core design rule:
 
-- `mikoto bridge` should know MCP routing, registry, policy, transport, and output filtering.
-- `mikoto-codex-mcp` should know Codex app-server, Codex sessions, streaming, approvals, interruption, and `@Chrome`.
+- `mikoto bridge` should know MCP routing, registry, policy, transport, and
+  output filtering.
+- `mikoto-codex-mcp` should know Codex app-server, Codex sessions, streaming,
+  approvals, interruption, and `@Chrome`.
 - The bridge must never expose raw Codex app-server JSON-RPC to ChatGPT.
 
 ## Package Layout
 
-- `packages/protocol`: shared schemas, config validation, relay/bridge message types, tool metadata, policy types, and test fixtures.
+- `packages/protocol`: shared schemas, config validation, relay/bridge message
+  types, tool metadata, policy types, and test fixtures.
 - `packages/relay`: Cloudflare Worker + Durable Object relay.
-- `packages/bridge`: local bridge process that starts backend MCP servers and connects outbound to the relay.
-- `packages/codex-mcp`: standalone MCP server that owns Codex app-server integration.
+- `packages/bridge`: local bridge process that starts backend MCP servers and
+  connects outbound to the relay.
+- `packages/codex-mcp`: standalone MCP server that owns Codex app-server
+  integration.
 - `packages/app`: optional ChatGPT App UI resources/components.
 
-Use TypeScript on Bun for local packages. Use the official MCP TypeScript SDK where practical.
+Use TypeScript on Bun for local packages. Use the official MCP TypeScript SDK
+where practical.
 
-Do not combine the bridge and `mikoto-codex-mcp` into one process. The bridge may start, stop, and supervise backend MCP server processes, but each backend keeps its own executable boundary and MCP protocol surface.
+Do not combine the bridge and `mikoto-codex-mcp` into one process. The bridge
+may start, stop, and supervise backend MCP server processes, but each backend
+keeps its own executable boundary and MCP protocol surface.
 
 ## External Architecture
 
 Request path:
 
-1. ChatGPT App calls the Cloudflare Access-protected Streamable HTTP MCP endpoint.
+1. ChatGPT App calls the Cloudflare Access-protected Streamable HTTP MCP
+   endpoint.
 2. Cloudflare Worker relay receives the MCP request.
 3. Relay forwards routing/session work to a Durable Object.
-4. Durable Object routes the call to the selected connected local bridge over WebSocket.
+4. Durable Object routes the call to the selected connected local bridge over
+   WebSocket.
 5. Local bridge forwards the call to a configured backend MCP server.
 6. Backend returns structured data through the bridge and relay.
 
@@ -59,14 +75,22 @@ Do not implement SSE.
 
 Use separate Cloudflare Access applications/policies:
 
-- ChatGPT-facing Streamable HTTP MCP endpoint: Cloudflare Access self-hosted application with Managed OAuth enabled.
-- Local bridge WebSocket endpoint: Cloudflare Access policy restricted to trusted local computers connected through Cloudflare WARP.
+- ChatGPT-facing Streamable HTTP MCP endpoint: Cloudflare Access self-hosted
+  application with Managed OAuth enabled.
+- Local bridge WebSocket endpoint: Cloudflare Access policy restricted to
+  trusted local computers connected through Cloudflare WARP.
 
-Deploy through GitHub Actions using `cloudflare/wrangler-action` or a raw `wrangler deploy` command with a Cloudflare API token stored in GitHub Actions secrets. Do not use Cloudflare Workers Builds.
+Deploy through GitHub Actions using `cloudflare/wrangler-action` or a raw
+`wrangler deploy` command with a Cloudflare API token stored in GitHub Actions
+secrets. Do not use Cloudflare Workers Builds.
 
-Keep the relay I/O-bound. The 5-minute tool timeout is wall-clock application behavior; Cloudflare CPU limits apply to active compute, not time spent waiting on network requests, storage calls, WebSocket messages, or other I/O. Avoid heavy result processing in the relay.
+Keep the relay I/O-bound. The 5-minute tool timeout is wall-clock application
+behavior; Cloudflare CPU limits apply to active compute, not time spent waiting
+on network requests, storage calls, WebSocket messages, or other I/O. Avoid
+heavy result processing in the relay.
 
-The relay owns all multi-bridge awareness. A local bridge should not know that other bridges exist.
+The relay owns all multi-bridge awareness. A local bridge should not know that
+other bridges exist.
 
 Relay responsibilities:
 
@@ -104,20 +128,30 @@ On bridge connection, persist safe bridge metadata:
 - exposed tool snapshot
 - WebSocket/session identifiers needed for routing
 
-`bridge.id` defaults to the local computer name when not configured. Reject a new connection if another currently connected bridge already uses the same `bridge.id`.
+`bridge.id` defaults to the local computer name when not configured. Reject a
+new connection if another currently connected bridge already uses the same
+`bridge.id`.
 
-Use Durable Object storage for bridge metadata that must survive hibernation/reinitialization. Use WebSocket attachment data for the minimal per-socket data needed to restore hibernated WebSocket sessions. Do not store secrets, local paths, environment variables, raw backend config, cookies, storage, tokens, raw HTML, or tool result payloads in bridge metadata.
+Use Durable Object storage for bridge metadata that must survive
+hibernation/reinitialization. Use WebSocket attachment data for the minimal
+per-socket data needed to restore hibernated WebSocket sessions. Do not store
+secrets, local paths, environment variables, raw backend config, cookies,
+storage, tokens, raw HTML, or tool result payloads in bridge metadata.
 
-The exposed-tool snapshot is static for the MVP bridge session. Dynamic backend add/remove and snapshot refresh are future work.
+The exposed-tool snapshot is static for the MVP bridge session. Dynamic backend
+add/remove and snapshot refresh are future work.
 
 Implementation notes:
 
 - Keep bridge metadata separate from tool-call state.
 - Treat connected bridge records as session records, not durable user data.
 - Store only the current exposed-tool snapshot, not full backend config.
-- On hibernation/reinitialization, reconstruct bridge routing from Durable Object storage plus WebSocket attachment data.
-- If restored metadata is incomplete or inconsistent, close the affected bridge connection and require the bridge to restart.
-- Update heartbeat timestamps from bridge messages, not from ChatGPT-facing tool calls.
+- On hibernation/reinitialization, reconstruct bridge routing from Durable
+  Object storage plus WebSocket attachment data.
+- If restored metadata is incomplete or inconsistent, close the affected bridge
+  connection and require the bridge to restart.
+- Update heartbeat timestamps from bridge messages, not from ChatGPT-facing tool
+  calls.
 
 ## Relay Tools
 
@@ -131,27 +165,41 @@ It returns only safe metadata:
 - last heartbeat time
 - exposed tool names
 
-It must not return secrets, local paths, environment variables, raw backend config, raw tool arguments, or tool results.
+It must not return secrets, local paths, environment variables, raw backend
+config, raw tool arguments, or tool results.
 
 ## Tool Routing
 
-Configured backend MCP servers expose their tools by default. The bridge must not auto-discover arbitrary local MCP servers.
+Configured backend MCP servers expose their tools by default. The bridge must
+not auto-discover arbitrary local MCP servers.
 
-Bridge-exposed tool names are backend-prefixed by default, such as `codex.codex_chrome_read` or `filesystem.read_file`. Configured aliases such as `local_chrome_read` may also be exposed.
+Bridge-exposed tool names are backend-prefixed by default, such as
+`codex.codex_chrome_read` or `filesystem.read_file`. Configured aliases such as
+`local_chrome_read` may also be exposed.
 
-Do not include bridge names in tool names. Relay-handled tool calls accept reserved `bridgeId` routing. `bridgeId` may be omitted only when exactly one connected bridge exposes the requested tool. If multiple connected bridges expose the requested tool and `bridgeId` is omitted, return a clear ambiguity error.
+Do not include bridge names in tool names. Relay-handled tool calls accept
+reserved `bridgeId` routing. `bridgeId` may be omitted only when exactly one
+connected bridge exposes the requested tool. If multiple connected bridges
+expose the requested tool and `bridgeId` is omitted, return a clear ambiguity
+error.
 
-The relay strips `bridgeId` before forwarding actual tool arguments to the selected bridge.
+The relay strips `bridgeId` before forwarding actual tool arguments to the
+selected bridge.
 
-For the MVP, each bridge processes one tool call at a time. If a selected bridge already has an in-flight call, return a clear bridge-busy error. Concurrent calls are future work.
+For the MVP, each bridge processes one tool call at a time. If a selected bridge
+already has an in-flight call, return a clear bridge-busy error. Concurrent
+calls are future work.
 
-Tool calls have a fixed 5-minute wall-clock timeout. Per-tool timeout configuration is future work. If the selected bridge connection is lost during a call, abort the call with a connection-lost error.
+Tool calls have a fixed 5-minute wall-clock timeout. Per-tool timeout
+configuration is future work. If the selected bridge connection is lost during a
+call, abort the call with a connection-lost error.
 
 Expected error cases:
 
 - Duplicate bridge id: reject the bridge WebSocket connection.
 - Unknown `bridgeId`: return a clear missing-bridge error.
-- Missing `bridgeId` with multiple matching bridges: return a clear ambiguity error.
+- Missing `bridgeId` with multiple matching bridges: return a clear ambiguity
+  error.
 - Tool not exposed by selected bridge: return a clear tool-not-found error.
 - Bridge already has an in-flight call: return a bridge-busy error.
 - Bridge disconnects during a call: return a connection-lost error.
@@ -176,9 +224,11 @@ Responsibilities:
 - attempt backend interruption on timeout where supported
 - terminate owned backend processes when the bridge exits
 
-If any configured backend fails to start or fails tool discovery, fail the whole bridge. Partial degraded startup is future work.
+If any configured backend fails to start or fails tool discovery, fail the whole
+bridge. Partial degraded startup is future work.
 
-Support relay connection settings from both `mikoto.toml` and environment variables so tests can target a local relay server.
+Support relay connection settings from both `mikoto.toml` and environment
+variables so tests can target a local relay server.
 
 The bridge should not:
 
@@ -205,23 +255,28 @@ If any step fails, exit with a non-zero status.
 
 ## Backend MCP Transports
 
-The backend MCP server config schema includes both `stdio` and `http` transports.
+The backend MCP server config schema includes both `stdio` and `http`
+transports.
 
-Implement `stdio` first. Configured `http` backends should return a clear unimplemented error until HTTP support lands.
+Implement `stdio` first. Configured `http` backends should return a clear
+unimplemented error until HTTP support lands.
 
 Do not hardcode OS-specific behavior. WSL-specific launch modes are future work.
 
 ## Codex MCP Server
 
-`mikoto-codex-mcp` is a standalone local MCP server. Do not bundle it into the bridge process.
+`mikoto-codex-mcp` is a standalone local MCP server. Do not bundle it into the
+bridge process.
 
-For the MVP, `mikoto-codex-mcp` launches and owns Codex app-server. Connecting to an already-running Codex app-server can be added later as an explicit mode.
+For the MVP, `mikoto-codex-mcp` launches and owns Codex app-server. Connecting
+to an already-running Codex app-server can be added later as an explicit mode.
 
 Codex CLI resolution:
 
 - Prefer `mise x codex@latest -- codex ...`.
 - Fall back to `bunx` only when `mise` is unavailable.
-- Do not silently choose unrelated global installs before trying the configured resolver.
+- Do not silently choose unrelated global installs before trying the configured
+  resolver.
 
 `mikoto-codex-mcp` responsibilities:
 
@@ -241,9 +296,16 @@ Expected semantic tools:
 - `codex_check`
 - `codex_chrome_read`
 
-`codex_chrome_read` is general-purpose and read-only. It should accept arbitrary natural-language read requests, constrained by policy, and return structured task-oriented results. It should decide an output shape appropriate to the request. For example, a request to summarize a dashboard may return sections, counts, and visible labels; a request to inspect notifications may return visible notification items. The tool should never return raw page internals, raw HTML, raw DOM dumps, screenshots, cookies, storage, tokens, or broad page dumps.
+`codex_chrome_read` is general-purpose and read-only. It should accept arbitrary
+natural-language read requests, constrained by policy, and return structured
+task-oriented results. It should decide an output shape appropriate to the
+request. For example, a request to summarize a dashboard may return sections,
+counts, and visible labels; a request to inspect notifications may return
+visible notification items. The tool should never return raw page internals, raw
+HTML, raw DOM dumps, screenshots, cookies, storage, tokens, or broad page dumps.
 
-On timeout, make a best-effort attempt to interrupt Codex app-server if supported.
+On timeout, make a best-effort attempt to interrupt Codex app-server if
+supported.
 
 ## Safety And Policy
 
@@ -267,15 +329,22 @@ Backend-level policy:
 - timeout interruption and approval boundaries
 - refusal to expose raw backend protocols as tools
 
-Browser read tools must not click, type, submit, navigate destructively, mutate state, inspect secrets, or return raw page internals.
+Browser read tools must not click, type, submit, navigate destructively, mutate
+state, inspect secrets, or return raw page internals.
 
-Policy is defense in depth. The bridge enforces the external contract before routing, while each backend enforces backend-specific invariants. Do not move Codex-specific policy into the bridge just because the first backend is Codex.
+Policy is defense in depth. The bridge enforces the external contract before
+routing, while each backend enforces backend-specific invariants. Do not move
+Codex-specific policy into the bridge just because the first backend is Codex.
 
-For arbitrary natural-language browser read requests, policy must be applied to the requested target and operation, not only to the final output. If a request asks for mutation or secret inspection, reject it even if the output could be filtered later.
+For arbitrary natural-language browser read requests, policy must be applied to
+the requested target and operation, not only to the final output. If a request
+asks for mutation or secret inspection, reject it even if the output could be
+filtered later.
 
 ## Configuration
 
-Use project-local `mikoto.toml` with schema validation. Per-user global config can be added later as a layered source.
+Use project-local `mikoto.toml` with schema validation. Per-user global config
+can be added later as a layered source.
 
 Maintain the schema in `packages/protocol`.
 
@@ -294,13 +363,16 @@ Initial config shape should cover:
 - exposure rules
 - policy binding
 
-Secrets should not be stored in `mikoto.toml` unless explicitly designed and documented. Prefer environment variables, Cloudflare secrets, GitHub Actions secrets, or local secret stores.
+Secrets should not be stored in `mikoto.toml` unless explicitly designed and
+documented. Prefer environment variables, Cloudflare secrets, GitHub Actions
+secrets, or local secret stores.
 
 Configuration precedence:
 
 1. Environment variables for secrets and test overrides.
 2. Project-local `mikoto.toml` for stable non-secret configuration.
-3. Built-in defaults for safe local behavior, such as defaulting `bridge.id` to the computer name.
+3. Built-in defaults for safe local behavior, such as defaulting `bridge.id` to
+   the computer name.
 
 Do not add per-user global config in the MVP.
 
@@ -319,7 +391,8 @@ Example categories, not final syntax:
 
 Use Vitest for repository tests.
 
-For Cloudflare Worker relay tests, use `@cloudflare/vitest-pool-workers` so tests run locally in the Workers runtime through Miniflare/workerd.
+For Cloudflare Worker relay tests, use `@cloudflare/vitest-pool-workers` so
+tests run locally in the Workers runtime through Miniflare/workerd.
 
 Initial tests:
 
@@ -334,14 +407,19 @@ Initial tests:
 - connection-lost abort behavior
 - `http` backend transport returns unimplemented
 
-Avoid browser/Codex end-to-end tests until skeleton protocol and routing behavior are stable.
+Avoid browser/Codex end-to-end tests until skeleton protocol and routing
+behavior are stable.
 
 Testing split:
 
-- Use ordinary Vitest tests for protocol schemas, config parsing, bridge routing logic, and local package utilities.
-- Use `@cloudflare/vitest-pool-workers` for Worker, Durable Object, WebSocket, hibernation, and relay routing behavior.
-- Use local relay test configuration so bridge tests can target a local Worker-runtime relay.
-- Avoid real Codex app-server, real browser, and real Cloudflare Access in initial automated tests.
+- Use ordinary Vitest tests for protocol schemas, config parsing, bridge routing
+  logic, and local package utilities.
+- Use `@cloudflare/vitest-pool-workers` for Worker, Durable Object, WebSocket,
+  hibernation, and relay routing behavior.
+- Use local relay test configuration so bridge tests can target a local
+  Worker-runtime relay.
+- Avoid real Codex app-server, real browser, and real Cloudflare Access in
+  initial automated tests.
 
 Do not use Bun's built-in test runner.
 
@@ -364,15 +442,20 @@ Required CI/deploy inputs:
 
 Do not use Cloudflare Workers Builds.
 
-CI should run Vitest and any static checks added by the implementation. Browser/Codex end-to-end tests are intentionally out of scope until the skeleton is stable.
+CI should run Vitest and any static checks added by the implementation.
+Browser/Codex end-to-end tests are intentionally out of scope until the skeleton
+is stable.
 
 ## Logging
 
 Use stdout logs only for bridge and relay in the MVP.
 
-Persistent logs are future work and must account for sensitive arguments/results.
+Persistent logs are future work and must account for sensitive
+arguments/results.
 
-Stdout logs should include operational metadata such as component, bridge id, tool name, status, duration, and error code. Do not log full tool arguments or full tool results by default.
+Stdout logs should include operational metadata such as component, bridge id,
+tool name, status, duration, and error code. Do not log full tool arguments or
+full tool results by default.
 
 ## Why Split Bridge and codex-mcp?
 
@@ -380,7 +463,8 @@ Benefits:
 
 - `mikoto` remains backend-agnostic.
 - Codex is just one local MCP server.
-- Discord, filesystem, shell, browser-devtools, or WSL repo tools can be added without touching Codex integration.
+- Discord, filesystem, shell, browser-devtools, or WSL repo tools can be added
+  without touching Codex integration.
 - Other MCP clients can use `mikoto-codex-mcp` directly if useful.
 - Codex app-server protocol changes are isolated.
 - The bridge can stay small and stable.
@@ -391,7 +475,8 @@ Costs:
 
 - One more local process.
 - One more MCP boundary.
-- Streaming, timeout interruption, approval, and elicitation mapping must pass through boundaries.
+- Streaming, timeout interruption, approval, and elicitation mapping must pass
+  through boundaries.
 - Slightly more latency.
 - More configuration.
 
@@ -402,13 +487,19 @@ For this project, the benefits outweigh the cost.
 Use these as references, not as direct replacements:
 
 - `xihuai18/codex-mcp`: community MCP server wrapping Codex app-server.
-- `openai/codex-plugin-cc`: official Claude Code plugin using Codex from Claude Code; useful as an app-server client reference.
-- `getpaseo/paseo`: self-hosted multi-agent orchestrator with daemon, relay, clients, and MCP tools.
-- Cloudflare Workers and Agents MCP examples: references for Worker/Durable Object relay patterns.
-- Cloudflare MCP Server Portal: future reference only if it fits later requirements.
-- `mcp-proxy` and `supergateway`: transport references for stdio-to-remote MCP bridging.
+- `openai/codex-plugin-cc`: official Claude Code plugin using Codex from Claude
+  Code; useful as an app-server client reference.
+- `getpaseo/paseo`: self-hosted multi-agent orchestrator with daemon, relay,
+  clients, and MCP tools.
+- Cloudflare Workers and Agents MCP examples: references for Worker/Durable
+  Object relay patterns.
+- Cloudflare MCP Server Portal: future reference only if it fits later
+  requirements.
+- `mcp-proxy` and `supergateway`: transport references for stdio-to-remote MCP
+  bridging.
 - Docker MCP Gateway: registry/gateway/isolation reference.
-- AgentBridge and OpenClaw Codex app-server plugins: Codex bridge references, not general-purpose `mikoto` replacements.
+- AgentBridge and OpenClaw Codex app-server plugins: Codex bridge references,
+  not general-purpose `mikoto` replacements.
 
 ## Future Improvements
 
@@ -419,11 +510,13 @@ Use these as references, not as direct replacements:
 - Partial degraded bridge startup.
 - Concurrent calls per bridge or backend.
 - Per-tool timeout configuration.
-- Explicit user-initiated tool-call cancellation once ChatGPT App/MCP cancellation behavior is confirmed.
+- Explicit user-initiated tool-call cancellation once ChatGPT App/MCP
+  cancellation behavior is confirmed.
 - Persistent relay/bridge logs with redaction.
 - WSL-specific launch mode.
 - HTTP MCP backend transport.
 - Per-user global config layering.
 - More backend MCP servers and richer policy presets.
 - Connecting to an already-running Codex app-server.
-- Cloudflare MCP Server Portal as a future reference if it fits later requirements.
+- Cloudflare MCP Server Portal as a future reference if it fits later
+  requirements.

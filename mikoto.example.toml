@@ -14,4 +14,3 @@ args = ["--cwd", "packages/codex-mcp", "run", "start"]
 [[servers.aliases]]
 name = "local_chrome_read"
 target = "codex.codex_chrome_read"
-
