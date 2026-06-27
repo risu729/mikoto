@@ -1,0 +1,17 @@
+[bridge]
+# Defaults to the local computer name when omitted.
+id = "dev-machine"
+
+[relay]
+url = "ws://localhost:8787/bridge"
+
+[[servers]]
+id = "codex"
+transport = "stdio"
+command = "bun"
+args = ["--cwd", "packages/codex-mcp", "run", "start"]
+
+[[servers.aliases]]
+name = "local_chrome_read"
+target = "codex.codex_chrome_read"
+

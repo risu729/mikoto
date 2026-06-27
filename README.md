@@ -68,6 +68,7 @@ TODO after implementation: replace this section with exact commands.
 Planned prerequisites:
 
 - Bun
+- mise
 - Cloudflare account
 - Cloudflare WARP on each local computer that will run `mikoto bridge`
 - Cloudflare Access Managed OAuth for the ChatGPT-facing MCP endpoint
@@ -86,7 +87,7 @@ TODO after implementation: replace with working commands.
 Planned flow:
 
 1. Deploy the Cloudflare relay.
-2. Start `mikoto bridge`; it connects outbound to the relay.
+2. Start `mikoto bridge` through the `bridge` mise task; it connects outbound to the relay.
 3. Connect the ChatGPT App to the Access-protected Streamable HTTP MCP endpoint.
 4. Call `mikoto.list_bridges`.
 5. Call a configured tool or alias such as `local_chrome_read`.
@@ -102,5 +103,7 @@ The backend MCP server config schema includes both `stdio` and `http` transports
 Use Vitest for repository tests.
 
 For Cloudflare Worker relay tests, use `@cloudflare/vitest-pool-workers` so tests run locally in the Workers runtime through Miniflare/workerd.
+
+Project commands are exposed as mise tasks.
 
 Avoid browser/Codex end-to-end tests until the skeleton protocol and routing behavior are stable.

@@ -1,0 +1,46 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+
+min_version = "2026.6.13"
+
+[tools]
+bun = "1.3.14"
+node = "26.3.1"
+wrangler = "4.105.0"
+
+[settings]
+experimental = true
+
+[deps.bun]
+auto = true
+sources = ["package.json", "bun.lock", "packages/*/package.json"]
+outputs = ["node_modules"]
+run = "bun install --frozen-lockfile"
+
+[tasks.test]
+description = "Run repository Vitest tests."
+run = "bunx vitest run"
+
+[tasks."test:relay"]
+description = "Run Cloudflare Worker relay tests."
+run = "cd packages/relay && bunx vitest run"
+
+[tasks.typecheck]
+description = "Typecheck the workspace."
+run = "bunx tsc -p tsconfig.json"
+
+[tasks.bridge]
+description = "Run the local bridge scaffold."
+run = "bun packages/bridge/src/index.ts"
+
+[tasks."codex-mcp"]
+description = "Run the Codex MCP scaffold."
+run = "bun packages/codex-mcp/src/index.ts"
+
+[tasks."relay:dev"]
+description = "Run the relay Worker locally with Wrangler."
+run = "cd packages/relay && wrangler dev"
+
+[tasks."relay:deploy"]
+description = "Deploy the relay Worker with Wrangler."
+run = "cd packages/relay && wrangler deploy"
+
