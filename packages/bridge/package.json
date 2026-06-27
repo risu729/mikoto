@@ -1,0 +1,16 @@
+{
+  "name": "@mikoto/bridge",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "mikoto-bridge": "./src/index.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@mikoto/protocol": "workspace:*",
+    "smol-toml": "1.7.0"
+  }
+}
