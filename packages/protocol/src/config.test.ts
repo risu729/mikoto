@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { MikotoConfigSchema } from "./config";
+import { BackendServerSchema, MikotoConfigSchema } from "./config";
 
-describe("MikotoConfigSchema", () => {
+describe("MikotoConfigSchema stdio backends", () => {
 	it("accepts stdio backend configuration", () => {
 		const config = MikotoConfigSchema.parse({
 			relay: { url: "ws://localhost:8787/bridge" },
@@ -19,8 +19,10 @@ describe("MikotoConfigSchema", () => {
 		expect(config.bridge).toEqual({});
 		expect(config.servers[0]?.transport).toBe("stdio");
 	});
+});
 
-	it("keeps http transport in the schema for future support", () => {
+describe("MikotoConfigSchema http backends", () => {
+	it("accepts http transport in the config schema", () => {
 		const config = MikotoConfigSchema.parse({
 			relay: { url: "ws://localhost:8787/bridge" },
 			servers: [
@@ -33,5 +35,53 @@ describe("MikotoConfigSchema", () => {
 		});
 
 		expect(config.servers[0]?.transport).toBe("http");
+	});
+
+	it("rejects non-http backend URLs", () => {
+		const result = BackendServerSchema.safeParse({
+			id: "remote",
+			transport: "http",
+			url: "ws://example.com/mcp",
+		});
+
+		expect(result.success).toBe(false);
+	});
+});
+
+describe("MikotoConfigSchema validation", () => {
+	it("accepts dotted bridge ids", () => {
+		const config = MikotoConfigSchema.parse({
+			bridge: { id: "dev-machine.local" },
+			relay: { url: "ws://localhost:8787/bridge" },
+		});
+
+		expect(config.bridge.id).toBe("dev-machine.local");
+	});
+
+	it("rejects non-websocket relay URLs", () => {
+		const result = MikotoConfigSchema.safeParse({
+			relay: { url: "https://localhost:8787/bridge" },
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it("rejects unknown root keys", () => {
+		const result = MikotoConfigSchema.safeParse({
+			extra: true,
+			relay: { url: "ws://localhost:8787/bridge" },
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it("rejects invalid backend ids", () => {
+		const result = BackendServerSchema.safeParse({
+			command: "bun",
+			id: "codex server",
+			transport: "stdio",
+		});
+
+		expect(result.success).toBe(false);
 	});
 });
