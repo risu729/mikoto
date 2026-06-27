@@ -1,16 +1,16 @@
 {
-  "name": "mikoto",
-  "private": true,
-  "type": "module",
-  "packageManager": "bun@1.3.14",
-  "workspaces": [
-    "packages/*"
-  ],
-  "devDependencies": {
-    "@cloudflare/workers-types": "4.20260627.1",
-    "@risu729/tsconfigs": "3.0.0",
-    "@types/node": "26.0.1",
-    "typescript": "6.0.3",
-    "vitest": "4.1.9"
-  }
+	"name": "mikoto",
+	"private": true,
+	"workspaces": [
+		"packages/*"
+	],
+	"type": "module",
+	"devDependencies": {
+		"@cloudflare/workers-types": "4.20260627.1",
+		"@risu729/tsconfigs": "3.0.0",
+		"@types/node": "26.0.1",
+		"typescript": "6.0.3",
+		"vitest": "4.1.9"
+	},
+	"packageManager": "bun@1.3.14"
 }

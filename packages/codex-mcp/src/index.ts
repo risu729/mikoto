@@ -1,14 +1,15 @@
 import { CODEX_MCP_TOOLS } from "./tools";
 
-export async function main(): Promise<void> {
-  console.log("mikoto-codex-mcp scaffold");
-  console.log(`tools=${CODEX_MCP_TOOLS.map((tool) => tool.name).join(",")}`);
-}
+const main = (): void => {
+	process.stdout.write("mikoto-codex-mcp scaffold\n");
+	process.stdout.write(`tools=${CODEX_MCP_TOOLS.map((tool) => tool.name).join(",")}\n`);
+};
 
 if (import.meta.main) {
-  main().catch((error) => {
-    console.error(error instanceof Error ? error.message : String(error));
-    process.exit(1);
-  });
+	try {
+		main();
+	} catch (error) {
+		process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+		process.exit(1);
+	}
 }
-

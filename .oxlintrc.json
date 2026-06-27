@@ -1,0 +1,43 @@
+{
+	"$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+	"plugins": ["import", "jsdoc", "node", "promise"],
+	"env": {
+		"node": true,
+		"worker": true
+	},
+	"globals": {
+		"WebSocketPair": "readonly"
+	},
+	"categories": {
+		"correctness": "error",
+		"nursery": "error",
+		"pedantic": "error",
+		"perf": "error",
+		"restriction": "error",
+		"style": "error",
+		"suspicious": "error"
+	},
+	"rules": {
+		"eslint/no-magic-numbers": "allow",
+		"eslint/no-ternary": "allow",
+		"eslint/sort-imports": "allow",
+		"import/no-default-export": "allow",
+		"import/no-nodejs-modules": "allow",
+		"import/no-relative-parent-imports": "allow",
+		"import/unambiguous": "allow"
+	},
+	"overrides": [
+		{
+			"files": ["packages/**/*.ts"],
+			"rules": {
+				"import/no-named-export": "allow"
+			}
+		},
+		{
+			"files": ["packages/bridge/src/config.ts"],
+			"rules": {
+				"node/no-process-env": "allow"
+			}
+		}
+	]
+}
