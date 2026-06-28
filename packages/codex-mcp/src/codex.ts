@@ -87,6 +87,7 @@ const createExecaOptions = (request: CodexTaskRequest): ExecaOptions => {
 		forceKillAfterDelay: TERMINATION_GRACE_MS,
 		maxBuffer: MAX_OUTPUT_BYTES,
 		reject: false,
+		stdin: "ignore",
 		timeout: request.timeoutMs,
 	} satisfies ExecaOptions;
 
@@ -271,6 +272,7 @@ class CodexTaskManager {
 export {
 	buildCodexExecArgs,
 	CodexTaskManager,
+	createExecaOptions,
 	DEFAULT_TOOL_TIMEOUT_MS,
 	MAX_TOOL_TIMEOUT_MS,
 	resolveCodexCommand,
