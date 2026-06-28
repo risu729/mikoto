@@ -4,6 +4,7 @@ import { createChromeReadPrompt, createChromeReadTaskInput } from "./chrome-read
 import {
 	buildCodexExecArgs,
 	CodexTaskManager,
+	createExecaOptions,
 	DEFAULT_TOOL_TIMEOUT_MS,
 	resolveCodexCommand,
 } from "./codex";
@@ -58,6 +59,36 @@ describe("buildCodexExecArgs", () => {
 
 	it("passes an explicit model when provided", () => {
 		expect(buildCodexExecArgs({ model: "gpt-5.4-mini", prompt: "hi" })).toContain("gpt-5.4-mini");
+	});
+});
+
+describe("createExecaOptions", () => {
+	it("closes stdin for non-interactive Codex exec runs", () => {
+		expect(
+			createExecaOptions({
+				prompt: "hi",
+				taskId: "task-1",
+				timeoutMs: 1_000,
+			}),
+		).toMatchObject({
+			reject: false,
+			stdin: "ignore",
+			timeout: 1_000,
+		});
+	});
+
+	it("passes cwd through when provided", () => {
+		expect(
+			createExecaOptions({
+				cwd: "/tmp/mikoto",
+				prompt: "hi",
+				taskId: "task-1",
+				timeoutMs: 1_000,
+			}),
+		).toMatchObject({
+			cwd: "/tmp/mikoto",
+			stdin: "ignore",
+		});
 	});
 });
 
