@@ -5,9 +5,9 @@ configured local MCP servers through a Cloudflare relay.
 
 The MVP goal is a general-purpose, read-only Codex browser read tool. ChatGPT
 should be able to ask for structured information from an allowed local browser
-context through Codex app-server and the official `@Chrome` integration, without
-direct browser control, raw HTML/DOM access, cookies, storage, tokens, or raw
-Codex app-server JSON-RPC.
+context through bounded Codex CLI tasks and the official `@Chrome` integration,
+without direct browser control, raw HTML/DOM access, cookies, storage, tokens,
+or raw Codex internals.
 
 ## Status
 
@@ -32,8 +32,8 @@ concrete in code and stable README documentation.
   endpoint.
 - `mikoto bridge`: local router that connects outbound to the relay and routes
   calls to configured backend MCP servers.
-- `mikoto-codex-mcp`: standalone MCP server that owns Codex app-server
-  integration.
+- `mikoto-codex-mcp`: standalone MCP server that owns bounded Codex CLI task
+  execution.
 
 The ChatGPT-facing MCP endpoint uses Streamable HTTP. The bridge connects
 outbound to the relay over WebSocket. Configured local MCP servers sit behind
@@ -46,7 +46,7 @@ flowchart TD
   Worker --> DO[Durable Object bridge/session coordinator]
   Bridge[mikoto bridge] -->|outbound WebSocket| DO
   Bridge --> CodexMCP[mikoto-codex-mcp]
-  CodexMCP --> Codex[codex app-server]
+  CodexMCP --> Codex[codex exec]
   Codex --> Chrome[official @Chrome]
   Bridge --> OtherMCP[other configured local MCP servers]
 ```
