@@ -1,6 +1,7 @@
-import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { once } from "node:events";
+
+import { execa } from "execa";
+import { DateTime } from "luxon";
 
 const CHECK_AFTER_MS = 1_000;
 const DEFAULT_TOOL_TIMEOUT_MS = 300_000;
@@ -53,20 +54,7 @@ type CodexTaskManagerOptions = {
 	runner?: CodexTaskRunner;
 };
 
-type CodexChild = ReturnType<typeof spawn> & {
-	stderr: NonNullable<ReturnType<typeof spawn>["stderr"]>;
-	stdout: NonNullable<ReturnType<typeof spawn>["stdout"]>;
-};
-
-type OutputCapture = {
-	read: () => Pick<CodexRunResult, "stderr" | "stdout">;
-};
-
-const appendBounded = (current: string, chunk: Buffer): string => {
-	const next = `${current}${chunk.toString("utf8")}`;
-
-	return next.length > MAX_OUTPUT_BYTES ? next.slice(-MAX_OUTPUT_BYTES) : next;
-};
+type ExecaOptions = import("execa").Options;
 
 const buildCodexExecArgs = (input: CodexTaskInput): string[] => {
 	const args = ["exec", "--json", "--skip-git-repo-check"];
@@ -81,18 +69,29 @@ const buildCodexExecArgs = (input: CodexTaskInput): string[] => {
 };
 
 const commandExists = async (command: string): Promise<boolean> => {
-	const child = spawn(command, ["--version"], { stdio: "ignore" });
-
 	try {
-		const [code] = (await once(child, "close")) as [number | null];
+		const result = await execa(command, ["--version"], {
+			reject: false,
+			stderr: "ignore",
+			stdout: "ignore",
+		});
 
-		return code === 0;
+		return !result.failed;
 	} catch {
 		return false;
 	}
 };
 
-const createSpawnOptions = (cwd: string | undefined): { cwd?: string } => (cwd ? { cwd } : {});
+const createExecaOptions = (request: CodexTaskRequest): ExecaOptions => {
+	const options = {
+		forceKillAfterDelay: TERMINATION_GRACE_MS,
+		maxBuffer: MAX_OUTPUT_BYTES,
+		reject: false,
+		timeout: request.timeoutMs,
+	} satisfies ExecaOptions;
+
+	return request.cwd ? { ...options, cwd: request.cwd } : options;
+};
 
 const normalizeTimeoutMs = (timeoutMs: number | undefined): number => {
 	if (!timeoutMs) {
@@ -113,20 +112,6 @@ const resolveCodexCommand = (hasMise = true): string[] => {
 const resolveInstalledCodexCommand = async (): Promise<string[]> =>
 	resolveCodexCommand(await commandExists("mise"));
 
-const createCodexChild = async (request: CodexTaskRequest): Promise<CodexChild> => {
-	const command = await resolveInstalledCodexCommand();
-	const executable = command.at(0);
-
-	if (!executable) {
-		throw new Error("Codex command resolution returned an empty command");
-	}
-
-	return spawn(executable, [...command.slice(1), ...buildCodexExecArgs(request)], {
-		...createSpawnOptions(request.cwd),
-		stdio: "pipe",
-	}) as CodexChild;
-};
-
 const getCompletionStatus = (
 	result: CodexRunResult,
 ): Exclude<CodexTaskStatus, "not_found" | "running"> => {
@@ -141,59 +126,52 @@ const getCompletionStatus = (
 	return "failed";
 };
 
-const startKillTimers = (
-	child: CodexChild,
-	request: CodexTaskRequest,
-	onTimeout: () => void,
-): NodeJS.Timeout[] => [
-	setTimeout(() => {
-		if (!child.killed) {
-			child.kill("SIGKILL");
-		}
-	}, request.timeoutMs + TERMINATION_GRACE_MS),
-	setTimeout(() => {
-		onTimeout();
-		child.kill("SIGTERM");
-	}, request.timeoutMs),
-];
+const nowIso = (): string => {
+	const iso = DateTime.utc().toISO();
 
-const stopKillTimers = (timers: NodeJS.Timeout[]): void => {
-	for (const timer of timers) {
-		clearTimeout(timer);
+	if (!iso) {
+		throw new Error("Failed to create an ISO timestamp");
 	}
+
+	return iso;
 };
 
-const captureOutput = (child: CodexChild): OutputCapture => {
-	let stderr = "";
-	let stdout = "";
+const normalizeOutput = (output: unknown): string => {
+	if (typeof output === "string") {
+		return output;
+	}
 
-	child.stdout.on("data", (chunk: Buffer) => {
-		stdout = appendBounded(stdout, chunk);
-	});
-	child.stderr.on("data", (chunk: Buffer) => {
-		stderr = appendBounded(stderr, chunk);
-	});
+	if (Array.isArray(output)) {
+		return output.join("\n");
+	}
 
-	return {
-		read: () => ({ stderr, stdout }),
-	};
+	if (output === null || typeof output === "undefined") {
+		return "";
+	}
+
+	return String(output);
 };
 
 const runCodexCliTask = async (request: CodexTaskRequest): Promise<CodexRunResult> => {
-	const child = await createCodexChild(request);
-	let timedOut = false;
-	const output = captureOutput(child);
-	const timers = startKillTimers(child, request, () => {
-		timedOut = true;
-	});
+	const command = await resolveInstalledCodexCommand();
+	const executable = command.at(0);
 
-	try {
-		const [exitCode] = (await once(child, "close")) as [number | null];
-
-		return { exitCode, timedOut, ...output.read() };
-	} finally {
-		stopKillTimers(timers);
+	if (!executable) {
+		throw new Error("Codex command resolution returned an empty command");
 	}
+
+	const result = await execa(
+		executable,
+		[...command.slice(1), ...buildCodexExecArgs(request)],
+		createExecaOptions(request),
+	);
+
+	return {
+		exitCode: result.exitCode ?? null,
+		stderr: normalizeOutput(result.stderr),
+		stdout: normalizeOutput(result.stdout),
+		timedOut: result.timedOut,
+	};
 };
 
 const createTaskRequest = (
@@ -241,7 +219,7 @@ class CodexTaskManager {
 
 	startTask(input: CodexTaskInput): CodexTaskSnapshot {
 		const taskId = randomUUID();
-		const startedAt = new Date().toISOString();
+		const startedAt = nowIso();
 		const timeoutMs = normalizeTimeoutMs(input.timeoutMs);
 		const task: CodexTaskRecord = {
 			checkAfterMs: CHECK_AFTER_MS,
@@ -261,7 +239,7 @@ class CodexTaskManager {
 		const status = getCompletionStatus(result);
 
 		Object.assign(task, {
-			completedAt: new Date().toISOString(),
+			completedAt: nowIso(),
 			exitCode: result.exitCode,
 			status,
 			stderr: result.stderr,
@@ -272,7 +250,7 @@ class CodexTaskManager {
 
 	static failTask(task: CodexTaskRecord, error: unknown): void {
 		Object.assign(task, {
-			completedAt: new Date().toISOString(),
+			completedAt: nowIso(),
 			error: error instanceof Error ? error.message : String(error),
 			status: "failed",
 		});
