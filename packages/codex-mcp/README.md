@@ -28,6 +28,19 @@ The server uses stdio, so MCP clients should start it as a local command. During
 task execution it resolves Codex with `mise x codex@latest -- codex` when `mise`
 is available, and falls back to `bunx codex`.
 
+## Compile
+
+From the repository root:
+
+```sh
+mise run compile:codex-mcp-app
+```
+
+This creates single-file Bun executables in `dist/`:
+
+- `codex-mcp-app-linux-x64`
+- `codex-mcp-app-windows-x64.exe`
+
 ## Reference
 
 The initial design was informed by reading
