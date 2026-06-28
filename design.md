@@ -39,6 +39,42 @@ Do not combine the bridge and `mikoto-codex-mcp` into one process. The bridge
 may start, stop, and supervise backend MCP server processes, but each backend
 keeps its own executable boundary and MCP protocol surface.
 
+## Library Selection
+
+Prefer modern, well-maintained libraries when they provide safer or clearer
+abstractions than low-level Node.js APIs. Keep dependencies purposeful and
+package-local when only one package needs them.
+
+Current recommendations:
+
+- Use `execa` for owned subprocess execution, timeouts, captured output, and
+  force-kill behavior.
+- Use `luxon` for explicit timestamp and date/time handling.
+- Use `zod` for runtime schema validation at config, protocol, and MCP tool
+  boundaries.
+- Consider `@sindresorhus/is` for narrow runtime predicates over unknown values
+  when a full `zod` schema is too heavy. Do not use it as a replacement for
+  boundary schemas.
+- Consider `citty` when bridge or backend packages grow real CLI commands,
+  subcommands, help text, and option parsing.
+- Consider `consola` when logs grow beyond MVP stdout lines and need structured
+  levels, scopes, or prettier local diagnostics.
+- Consider `pathe` when path logic becomes cross-platform, WSL-aware, or
+  file-URL-heavy enough that `node:path` becomes noisy.
+- Consider `ufo` for URL construction and normalization when relay, Access, or
+  backend URL handling grows beyond simple `URL` usage.
+- Consider `type-fest` for shared type utilities only when local TypeScript
+  types become meaningfully repetitive or hard to read.
+
+Current non-recommendations:
+
+- Do not replace `mikoto.toml` with JSON/YAML or introduce `c12` for the MVP.
+  The project-local TOML plus schema validation model is intentional. Reevaluate
+  `c12` only with future per-user/global config layering.
+- Do not use `meow` while `citty` is the preferred future CLI option.
+- Do not add libraries only to avoid a few lines of straightforward platform
+  code.
+
 ## External Architecture
 
 Request path:
