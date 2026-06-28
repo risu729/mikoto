@@ -5,7 +5,7 @@ import { DateTime } from "luxon";
 
 const CHECK_AFTER_MS = 1_000;
 const DEFAULT_TOOL_TIMEOUT_MS = 300_000;
-const MAX_OUTPUT_BYTES = 64_000;
+const MAX_OUTPUT_BYTES = 8 * 1024 * 1024;
 const MAX_TOOL_TIMEOUT_MS = 300_000;
 const TERMINATION_GRACE_MS = 2_000;
 
@@ -274,6 +274,7 @@ export {
 	CodexTaskManager,
 	createExecaOptions,
 	DEFAULT_TOOL_TIMEOUT_MS,
+	MAX_OUTPUT_BYTES,
 	MAX_TOOL_TIMEOUT_MS,
 	resolveCodexCommand,
 };
