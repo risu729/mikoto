@@ -6,6 +6,7 @@ import {
 	CodexTaskManager,
 	createExecaOptions,
 	DEFAULT_TOOL_TIMEOUT_MS,
+	MAX_OUTPUT_BYTES,
 	resolveCodexCommand,
 } from "./codex";
 import { CODEX_MCP_TOOLS } from "./tools";
@@ -71,10 +72,15 @@ describe("createExecaOptions", () => {
 				timeoutMs: 1_000,
 			}),
 		).toMatchObject({
+			maxBuffer: MAX_OUTPUT_BYTES,
 			reject: false,
 			stdin: "ignore",
 			timeout: 1_000,
 		});
+	});
+
+	it("allows large Codex JSON event streams from browser tasks", () => {
+		expect(MAX_OUTPUT_BYTES).toBeGreaterThanOrEqual(8 * 1024 * 1024);
 	});
 
 	it("passes cwd through when provided", () => {
