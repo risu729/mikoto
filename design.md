@@ -11,16 +11,16 @@ servers through a Cloudflare relay.
 
 The MVP is a general-purpose, read-only Codex browser read tool. It should allow
 natural-language read requests against allowed local browser context through
-Codex app-server and the official `@Chrome` integration. It must not be
+bounded Codex CLI tasks and the official `@Chrome` integration. It must not be
 GitHub-notifications-specific.
 
 Core design rule:
 
 - `mikoto bridge` should know MCP routing, registry, policy, transport, and
   output filtering.
-- `mikoto-codex-mcp` should know Codex app-server, Codex sessions, streaming,
-  approvals, interruption, and `@Chrome`.
-- The bridge must never expose raw Codex app-server JSON-RPC to ChatGPT.
+- `mikoto-codex-mcp` should know Codex CLI execution, Codex task prompts,
+  task status, timeout handling, and `@Chrome`.
+- The bridge must never expose raw Codex protocol details to ChatGPT.
 
 ## Package Layout
 
@@ -29,8 +29,8 @@ Core design rule:
 - `packages/relay`: Cloudflare Worker + Durable Object relay.
 - `packages/bridge`: local bridge process that starts backend MCP servers and
   connects outbound to the relay.
-- `packages/codex-mcp`: standalone MCP server that owns Codex app-server
-  integration.
+- `packages/codex-mcp`: standalone MCP server that owns Codex CLI task
+  execution.
 
 Use TypeScript on Bun for local packages. Use the official MCP TypeScript SDK
 where practical.
@@ -148,7 +148,7 @@ The relay should not:
 - store tool results by default
 - inspect local filesystem paths or backend environment variables
 - perform heavy result processing
-- know Codex app-server internals
+- know Codex execution internals
 
 ## Durable Object State
 
@@ -268,7 +268,7 @@ The bridge should not:
 - expose an HTTP server for the MVP
 - discover arbitrary local MCP servers
 - know about other connected bridges
-- implement Codex app-server JSON-RPC directly
+- implement Codex execution details directly
 - implement Discord Bot API behavior directly
 - expose raw backend protocol methods as public tools
 
@@ -301,7 +301,9 @@ Do not hardcode OS-specific behavior.
 `mikoto-codex-mcp` is a standalone local MCP server. Do not bundle it into the
 bridge process.
 
-For the MVP, `mikoto-codex-mcp` launches and owns Codex app-server.
+For the MVP, `mikoto-codex-mcp` launches and owns bounded
+`codex exec --json` subprocesses. Codex app-server backed execution is a future
+improvement tracked in issue #28.
 
 Codex CLI resolution:
 
@@ -313,14 +315,13 @@ Codex CLI resolution:
 `mikoto-codex-mcp` responsibilities:
 
 - launch Codex CLI through the configured resolver
-- start Codex app-server
-- run app-server initialize/session/thread/turn flows
-- stream app-server events into MCP tool results where appropriate
-- map approval and elicitation events into MCP-compatible behavior
+- run bounded `codex exec --json` tasks
+- capture task stdout, stderr, exit status, and timeout state
+- map task status into MCP-compatible polling through `codex_check`
 - provide safe task templates for Codex tasks
 - provide the general-purpose read-only browser read tool
 - enforce backend-specific read-only policy
-- avoid exposing raw app-server JSON-RPC as public MCP tools
+- avoid exposing raw Codex internals as public MCP tools
 
 Expected semantic tools:
 
@@ -336,7 +337,8 @@ counts, and visible labels; a request to inspect notifications may return
 visible notification items. The tool should never return raw page internals, raw
 HTML, raw DOM dumps, screenshots, cookies, storage, tokens, or broad page dumps.
 
-On timeout, make a best-effort attempt to interrupt Codex app-server if
+On timeout, terminate the owned Codex subprocess. Future app-server support
+should make a best-effort attempt to interrupt the active Codex turn if
 supported.
 
 ## Safety And Policy
@@ -496,7 +498,7 @@ Benefits:
 - Additional backend MCP servers can be added without touching Codex
   integration.
 - Other MCP clients can use `mikoto-codex-mcp` directly if useful.
-- Codex app-server protocol changes are isolated.
+- Codex execution details are isolated.
 - The bridge can stay small and stable.
 - Crash isolation is better.
 - Testing is simpler.

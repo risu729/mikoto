@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { createChromeReadPrompt, createChromeReadTaskInput } from "./chrome-read";
 import {
 	buildCodexExecArgs,
 	CodexTaskManager,
@@ -9,13 +10,39 @@ import {
 import { CODEX_MCP_TOOLS } from "./tools";
 
 describe("codex MCP scaffold", () => {
-	it("exposes only the small non-Chrome tool set", () => {
-		expect(CODEX_MCP_TOOLS.map((tool) => tool.name)).toEqual(["codex_task", "codex_check"]);
+	it("exposes the semantic Codex tool set", () => {
+		expect(CODEX_MCP_TOOLS.map((tool) => tool.name)).toEqual([
+			"codex_task",
+			"codex_check",
+			"codex_chrome_read",
+		]);
 	});
 
 	it("prefers mise for Codex CLI resolution", () => {
 		expect(resolveCodexCommand(true).slice(0, 4)).toEqual(["mise", "x", "codex@latest", "--"]);
 		expect(resolveCodexCommand(false)[0]).toBe("bunx");
+	});
+});
+
+describe("chrome read policy", () => {
+	it("creates a read-only @Chrome prompt", () => {
+		const prompt = createChromeReadPrompt("Click the notification and summarize the details");
+
+		expect(prompt).toContain("@Chrome");
+		expect(prompt).toContain("Click the notification and summarize the details");
+		expect(prompt).toContain("Use read-only browser access");
+		expect(prompt).toContain("You may navigate or interact only when required to read");
+		expect(prompt).toContain("raw HTML");
+	});
+
+	it("converts arbitrary browser read requests into Codex task input", () => {
+		const input = createChromeReadTaskInput({
+			model: "gpt-5.4-mini",
+			request: "Click the notification and summarize the details",
+		});
+
+		expect(input.model).toBe("gpt-5.4-mini");
+		expect(input.prompt).toContain("Click the notification and summarize the details");
 	});
 });
 
