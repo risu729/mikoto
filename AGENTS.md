@@ -7,6 +7,7 @@
 - Prefer modern, well-maintained libraries when they provide a clearer or more
   reliable abstraction than low-level Node.js APIs.
 - Use `README.md` for the public project overview.
+- Use `packages/docs` for durable user-facing documentation.
 - Use `design.md` for temporary detailed design notes. Remove `design.md` after
   the implementation makes the design concrete in code and README docs.
 
