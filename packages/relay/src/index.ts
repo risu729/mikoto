@@ -1,20 +1,18 @@
 import { BridgeHelloMessageSchema } from "@mikoto/protocol";
-import type { BridgeMetadata, JsonObject } from "@mikoto/protocol";
+import type { BridgeMetadata } from "@mikoto/protocol";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { Context } from "hono";
 import { Hono } from "hono";
 
 type Env = {
 	RELAY_DO: DurableObjectNamespace;
 };
-type McpRequest = {
-	id?: null | number | string;
-	jsonrpc?: string;
-	method?: string;
-	params?: JsonObject;
-};
 type RegisteredBridge = BridgeMetadata & {
 	connectedAt: string;
 };
+type JsonValue = boolean | JsonValue[] | null | number | string | { [key: string]: JsonValue };
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -25,7 +23,7 @@ const getRelayStub = (env: Env): DurableObjectStub => {
 	return env.RELAY_DO.get(durableObjectId);
 };
 
-const mcpToolResult = (payload: JsonObject) => ({
+const createJsonToolResult = (payload: JsonValue): CallToolResult => ({
 	content: [
 		{
 			text: JSON.stringify(payload),
@@ -34,89 +32,47 @@ const mcpToolResult = (payload: JsonObject) => ({
 	],
 });
 
-const createMcpResponse = (id: McpRequest["id"], result: JsonObject) => ({
-	id,
-	jsonrpc: "2.0",
-	result,
-});
-
-const createMcpErrorResponse = (id: McpRequest["id"], code: number, message: string) => ({
-	error: {
-		code,
-		message,
-	},
-	id,
-	jsonrpc: "2.0",
-});
-
-const createInitializeResponse = (request: McpRequest) =>
-	createMcpResponse(request.id, {
-		capabilities: {
-			tools: {},
-		},
-		protocolVersion: "2025-06-18",
-		serverInfo: {
-			name: "mikoto-relay",
-			version: "0.0.0",
-		},
+const createRelayMcpServer = (env: Env): McpServer => {
+	const server = new McpServer({
+		name: "mikoto-relay",
+		version: "0.0.0",
 	});
 
-const createToolsListResponse = (request: McpRequest) =>
-	createMcpResponse(request.id, {
-		tools: [
-			{
-				description: "List currently connected local Mikoto bridges.",
-				inputSchema: {
-					additionalProperties: false,
-					properties: {},
-					type: "object",
-				},
-				name: "mikoto_list_bridges",
-			},
-		],
-	});
+	server.registerTool(
+		"mikoto_list_bridges",
+		{
+			description: "List currently connected local Mikoto bridges.",
+			inputSchema: {},
+			title: "List Mikoto Bridges",
+		},
+		async () => {
+			const response = await getRelayStub(env).fetch("http://relay.local/bridges");
+			const { bridges } = (await response.json()) as { bridges: RegisteredBridge[] };
 
-const createToolsCallResponse = async (request: McpRequest, env: Env) => {
-	const name = request.params?.["name"];
+			return createJsonToolResult({ bridges });
+		},
+	);
 
-	if (name !== "mikoto_list_bridges") {
-		return createMcpErrorResponse(request.id, -32602, "Unknown tool");
-	}
-
-	const response = await getRelayStub(env).fetch("http://relay.local/bridges");
-	const { bridges } = (await response.json()) as { bridges: RegisteredBridge[] };
-
-	return createMcpResponse(request.id, mcpToolResult({ bridges }));
-};
-
-const handleMcpRequest = async (request: McpRequest, env: Env) => {
-	switch (request.method) {
-		case "initialize":
-			return createInitializeResponse(request);
-		case "tools/list":
-			return createToolsListResponse(request);
-		case "tools/call":
-			return await createToolsCallResponse(request, env);
-		default:
-			return createMcpErrorResponse(request.id, -32601, "Method not found");
-	}
+	return server;
 };
 
 type HonoContext = Context<{ Bindings: Env }>;
 
-app.post("/mcp", async (context: HonoContext) => {
-	const request = (await context.req.json().catch(() => null)) as McpRequest | null;
+app.all("/mcp", async (context: HonoContext) => {
+	// Stateless SDK transports must be request-scoped; reusing one across requests throws.
+	const server = createRelayMcpServer(context.env);
+	const transport = new WebStandardStreamableHTTPServerTransport({
+		enableJsonResponse: true,
+	});
 
-	if (!request || request.jsonrpc !== "2.0" || typeof request.method !== "string") {
-		return context.json(createMcpErrorResponse(request?.id, -32600, "Invalid request"), 400);
+	await server.connect(transport);
+
+	try {
+		return await transport.handleRequest(context.req.raw);
+	} finally {
+		await server.close();
 	}
-
-	return context.json(await handleMcpRequest(request, context.env));
 });
-
-app.all("/mcp", (context) =>
-	context.json(createMcpErrorResponse(null, -32000, "Method not allowed"), 405),
-);
 
 app.get("/bridge", (context) => getRelayStub(context.env).fetch(context.req.raw));
 
