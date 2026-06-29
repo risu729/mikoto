@@ -59,9 +59,11 @@ const createCloseMock = () => vi.fn<() => Promise<void>>(() => Promise.resolve()
 const createClientFactory = (
 	close: () => Promise<void>,
 	result: Error | ListToolsResult,
+	callTool = vi.fn(() => Promise.resolve({ content: [{ text: "ok", type: "text" as const }] })),
 ): BackendClientFactory =>
 	vi.fn(() =>
 		Promise.resolve({
+			callTool,
 			close,
 			listTools: () => (result instanceof Error ? Promise.reject(result) : Promise.resolve(result)),
 		}),
@@ -84,6 +86,37 @@ describe("startConfiguredBackends discovery", () => {
 
 		await discovery.close();
 		expect(close).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("startConfiguredBackends routing", () => {
+	it("routes aliases to the backend MCP tool name", async () => {
+		const callTool = vi.fn(() =>
+			Promise.resolve({ content: [{ text: "done", type: "text" as const }] }),
+		);
+		const clientFactory = createClientFactory(
+			createCloseMock(),
+			{ tools: [chromeReadTool] },
+			callTool,
+		);
+		const discovery = await startConfiguredBackends(
+			[
+				createStdioServer({
+					aliases: [{ name: "local_chrome_read", target: "codex.codex_chrome_read" }],
+				}),
+			],
+			{ clientFactory },
+		);
+
+		await expect(
+			discovery.callTool("local_chrome_read", { request: "read page" }),
+		).resolves.toEqual({
+			content: [{ text: "done", type: "text" }],
+		});
+		expect(callTool).toHaveBeenCalledWith({
+			arguments: { request: "read page" },
+			name: "codex_chrome_read",
+		});
 	});
 
 	it("fails when an alias target is missing", async () => {

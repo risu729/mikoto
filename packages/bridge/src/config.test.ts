@@ -2,10 +2,11 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
+import type { BackendDiscovery } from "./backends";
 import { loadBridgeConfig } from "./config";
-import { createBridgeHelloMessage } from "./index";
+import { createBridgeHelloMessage, handleRelayMessage } from "./index";
 
 describe("loadBridgeConfig", () => {
 	it("defaults bridge id to a non-empty host name", async () => {
@@ -48,5 +49,36 @@ describe("createBridgeHelloMessage", () => {
 			type: "bridge.hello",
 		});
 		expect(Date.parse(message.bridge.lastHeartbeat)).not.toBeNaN();
+	});
+});
+
+describe("handleRelayMessage", () => {
+	it("returns a structured error for invalid relay messages with a call id", async () => {
+		const send = vi.fn();
+		const socket = { send } as unknown as WebSocket;
+		const backendDiscovery = {
+			callTool: vi.fn(),
+			close: vi.fn(),
+			tools: [],
+		} satisfies BackendDiscovery;
+
+		await handleRelayMessage(
+			backendDiscovery,
+			socket,
+			JSON.stringify({ id: "call-1", type: "unexpected" }),
+		);
+
+		expect(send).toHaveBeenCalledWith(
+			JSON.stringify({
+				error: {
+					code: "invalid_relay_message",
+					message: "Invalid relay tool call.",
+				},
+				id: "call-1",
+				ok: false,
+				type: "tool.result",
+			}),
+		);
+		expect(backendDiscovery.callTool).not.toHaveBeenCalled();
 	});
 });

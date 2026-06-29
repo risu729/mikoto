@@ -1,18 +1,29 @@
-import { BridgeHelloMessageSchema } from "@mikoto/protocol";
-import type { BridgeHelloMessage, BridgeMetadata, ToolInfo } from "@mikoto/protocol";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type {
+	BridgeHelloMessage,
+	JsonObject,
+	ToolCallError,
+	ToolCallRequest,
+	ToolCallResult,
+} from "@mikoto/protocol";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { Context } from "hono";
 import { Hono } from "hono";
+
+import { parseBridgeMessage, sendBridgeError, sendBridgeRegistered } from "./bridge-messages";
+import createRelayMcpServer from "./mcp";
+import { createPendingError, createToolError, selectBridge } from "./routing";
+import type { PendingToolCall, RegisteredBridge } from "./routing";
 
 type Env = {
 	RELAY_DO: DurableObjectNamespace;
 };
-type RegisteredBridge = BridgeMetadata & {
-	connectedAt: string;
-	toolMetadata: ToolInfo[];
+type ToolCallPayload = {
+	arguments: JsonObject;
+	bridgeId?: string;
+	tool: string;
 };
+
+const TOOL_CALL_TIMEOUT_MS = 300_000;
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -23,42 +34,7 @@ const getRelayStub = (env: Env): DurableObjectStub => {
 	return env.RELAY_DO.get(durableObjectId);
 };
 
-const createJsonToolResult = (payload: unknown): CallToolResult => ({
-	content: [
-		{
-			text: JSON.stringify(payload),
-			type: "text",
-		},
-	],
-});
-
-const createRelayMcpServer = (env: Env): McpServer => {
-	const server = new McpServer({
-		name: "mikoto-relay",
-		version: "0.0.0",
-	});
-
-	server.registerTool(
-		"mikoto_list_bridges",
-		{
-			description: "List currently connected local Mikoto bridges.",
-			inputSchema: {},
-			title: "List Mikoto Bridges",
-		},
-		async () => {
-			const response = await getRelayStub(env).fetch("http://relay.local/bridges");
-			const { bridges } = (await response.json()) as { bridges: RegisteredBridge[] };
-
-			return createJsonToolResult({ bridges });
-		},
-	);
-
-	return server;
-};
-
-type HonoContext = Context<{ Bindings: Env }>;
-
-app.all("/mcp", async (context: HonoContext) => {
+app.all("/mcp", async (context: Context<{ Bindings: Env }>) => {
 	// Stateless SDK transports must be request-scoped; reusing one across requests throws.
 	const server = createRelayMcpServer(context.env);
 	const transport = new WebStandardStreamableHTTPServerTransport({
@@ -76,41 +52,8 @@ app.all("/mcp", async (context: HonoContext) => {
 
 app.get("/bridge", (context) => getRelayStub(context.env).fetch(context.req.raw));
 
-const parseBridgeMessage = (message: string): { ok: true; value: unknown } | { ok: false } => {
-	try {
-		return { ok: true, value: JSON.parse(message) as unknown };
-	} catch {
-		return { ok: false };
-	}
-};
-
-const sendBridgeError = (ws: WebSocket, error: string): void => {
-	ws.send(JSON.stringify({ error, ok: false }));
-};
-
-const sendBridgeRegistered = (ws: WebSocket, bridgeId: string): void => {
-	ws.send(JSON.stringify({ bridgeId, ok: true, type: "bridge.registered" }));
-};
-
-const parseBridgeHello = (
-	ws: WebSocket,
-	message: string,
-): ReturnType<typeof BridgeHelloMessageSchema.safeParse> => {
-	const raw = parseBridgeMessage(message);
-	if (!raw.ok) {
-		sendBridgeError(ws, "invalid json");
-		return BridgeHelloMessageSchema.safeParse(null);
-	}
-
-	const parsed = BridgeHelloMessageSchema.safeParse(raw.value);
-	if (!parsed.success) {
-		sendBridgeError(ws, "invalid bridge message");
-	}
-
-	return parsed;
-};
-
 class RelayDurableObject {
+	private readonly pendingToolCalls = new Map<string, PendingToolCall>();
 	private readonly state: DurableObjectState;
 
 	constructor(state: DurableObjectState) {
@@ -122,6 +65,10 @@ class RelayDurableObject {
 
 		if (url.pathname === "/bridges") {
 			return await this.listBridges();
+		}
+
+		if (url.pathname === "/tool-call" && request.method === "POST") {
+			return await this.callBridgeTool(request);
 		}
 
 		if (request.headers.get("Upgrade") !== "websocket") {
@@ -144,6 +91,10 @@ class RelayDurableObject {
 		const attachment = ws.deserializeAttachment() as { bridgeId?: string } | undefined;
 		if (attachment?.bridgeId) {
 			await this.state.storage.delete(`bridge:${attachment.bridgeId}`);
+			this.rejectPendingCallsForBridge(
+				attachment.bridgeId,
+				createPendingError("bridge_disconnected", "Bridge disconnected during tool call."),
+			);
 		}
 	}
 
@@ -162,17 +113,25 @@ class RelayDurableObject {
 	}
 
 	private async handleBridgeTextMessage(ws: WebSocket, message: string): Promise<void> {
-		const parsed = parseBridgeHello(ws, message);
-		if (!parsed.success) {
-			return;
+		const parsed = parseBridgeMessage(message);
+		if (parsed.kind === "tool-result") {
+			this.resolvePendingToolCall(parsed.value);
+		} else if (parsed.kind === "hello") {
+			await this.registerBridgeHello(ws, parsed.value);
+		} else if (parsed.kind === "invalid-json") {
+			sendBridgeError(ws, "invalid json");
+		} else {
+			sendBridgeError(ws, "invalid bridge message");
 		}
+	}
 
-		const registered = await this.registerBridge(parsed.data, ws);
+	private async registerBridgeHello(ws: WebSocket, message: BridgeHelloMessage): Promise<void> {
+		const registered = await this.registerBridge(message, ws);
 		if (!registered) {
 			return;
 		}
 
-		sendBridgeRegistered(ws, parsed.data.bridge.id);
+		sendBridgeRegistered(ws, message.bridge.id);
 	}
 
 	private async registerBridge(message: BridgeHelloMessage, ws: WebSocket): Promise<boolean> {
@@ -200,13 +159,140 @@ class RelayDurableObject {
 		return true;
 	}
 
-	private async listBridges(): Promise<Response> {
-		const list = await this.state.storage.list<RegisteredBridge>({ prefix: "bridge:" });
-		const bridges = Array.from(list.values()).sort((left, right) =>
-			left.id.localeCompare(right.id),
-		);
+	private findBridgeSocket(bridgeId: string): WebSocket | undefined {
+		return this.state.getWebSockets().find((ws) => {
+			const attachment = ws.deserializeAttachment() as { bridgeId?: string } | undefined;
+			return attachment?.bridgeId === bridgeId;
+		});
+	}
 
-		return Response.json({ bridges });
+	private async readBridges(): Promise<RegisteredBridge[]> {
+		const list = await this.state.storage.list<RegisteredBridge>({ prefix: "bridge:" });
+		return Array.from(list.values()).sort((left, right) => left.id.localeCompare(right.id));
+	}
+
+	private async callBridgeTool(request: Request): Promise<Response> {
+		const payload = (await request.json()) as ToolCallPayload;
+		const id = crypto.randomUUID();
+		const selected = selectBridge(await this.readBridges(), payload.tool, payload.bridgeId);
+
+		if (selected.error || !selected.bridge) {
+			return Response.json(
+				createToolError(
+					id,
+					selected.error?.code ?? "missing_bridge",
+					selected.error?.message ?? "Bridge not found.",
+				),
+			);
+		}
+
+		const result = await this.sendBridgeToolCall(selected.bridge.id, {
+			arguments: payload.arguments,
+			bridgeId: selected.bridge.id,
+			id,
+			tool: payload.tool,
+			type: "tool.call",
+		});
+
+		return Response.json(result);
+	}
+
+	private sendBridgeToolCall(bridgeId: string, request: ToolCallRequest): Promise<ToolCallResult> {
+		const socket = this.findBridgeSocket(bridgeId);
+		if (!socket) {
+			return Promise.resolve(
+				createToolError(request.id, "bridge_disconnected", `Bridge is not connected: ${bridgeId}`),
+			);
+		}
+		if (this.bridgeHasPendingCall(bridgeId)) {
+			return Promise.resolve(
+				createToolError(
+					request.id,
+					"bridge_busy",
+					`Bridge already has an in-flight tool call: ${bridgeId}`,
+				),
+			);
+		}
+		if (this.pendingToolCalls.has(request.id)) {
+			return Promise.resolve(
+				createToolError(
+					request.id,
+					"duplicate_tool_call_id",
+					`Tool call id is already pending: ${request.id}`,
+				),
+			);
+		}
+
+		return this.createPendingToolCall(bridgeId, request, socket);
+	}
+
+	private bridgeHasPendingCall(bridgeId: string): boolean {
+		return Array.from(this.pendingToolCalls.values()).some((call) => call.bridgeId === bridgeId);
+	}
+
+	private createPendingToolCall(
+		bridgeId: string,
+		request: ToolCallRequest,
+		socket: WebSocket,
+	): Promise<ToolCallResult> {
+		const deferred = Promise.withResolvers<ToolCallResult>();
+		const timeoutRef: { current?: ReturnType<typeof setTimeout> } = {};
+		let settled = false;
+		const settle = (result: ToolCallResult): void => {
+			if (settled) {
+				return;
+			}
+
+			settled = true;
+			this.pendingToolCalls.delete(request.id);
+			if (timeoutRef.current) {
+				clearTimeout(timeoutRef.current);
+			}
+			deferred.resolve(result);
+		};
+		timeoutRef.current = setTimeout(() => {
+			settle(createToolError(request.id, "tool_timeout", "Tool call timed out."));
+		}, TOOL_CALL_TIMEOUT_MS);
+
+		this.pendingToolCalls.set(request.id, {
+			bridgeId,
+			reject: (error) => {
+				settle(createToolError(request.id, error.code, error.message));
+			},
+			resolve: (result) => {
+				settle(result);
+			},
+		});
+		try {
+			socket.send(JSON.stringify(request));
+		} catch {
+			settle(createToolError(request.id, "bridge_disconnected", "Bridge send failed."));
+		}
+
+		return deferred.promise;
+	}
+
+	private rejectPendingCallsForBridge(bridgeId: string, error: ToolCallError): void {
+		for (const [id, pending] of this.pendingToolCalls) {
+			if (pending.bridgeId === bridgeId) {
+				this.pendingToolCalls.delete(id);
+				pending.reject(error);
+			}
+		}
+	}
+
+	private resolvePendingToolCall(result: ToolCallResult): void {
+		const pending = this.pendingToolCalls.get(result.id);
+		if (!pending) {
+			return;
+		}
+
+		this.pendingToolCalls.delete(result.id);
+		pending.resolve(result);
+	}
+
+	private async listBridges(): Promise<Response> {
+		return Response.json({ bridges: await this.readBridges() });
 	}
 }
 

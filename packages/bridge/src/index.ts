@@ -1,6 +1,15 @@
-import type { BridgeHelloMessage, ToolInfo } from "@mikoto/protocol";
+import { RelayToBridgeMessageSchema } from "@mikoto/protocol";
+import type {
+	BridgeHelloMessage,
+	JsonObject,
+	JsonValue,
+	ToolCallRequest,
+	ToolCallResult,
+	ToolInfo,
+} from "@mikoto/protocol";
 
 import { startConfiguredBackends } from "./backends";
+import type { BackendDiscovery } from "./backends";
 import { loadBridgeConfig } from "./config";
 import type { ResolvedBridgeConfig } from "./config";
 
@@ -32,17 +41,103 @@ const createBridgeHelloMessage = (
 	type: "bridge.hello",
 });
 
-const connectRelay = (config: ResolvedBridgeConfig, tools: ToolInfo[] = []): Promise<void> =>
+const parseRelayMessage = (message: string): null | ToolCallRequest => {
+	try {
+		return RelayToBridgeMessageSchema.parse(JSON.parse(message) as unknown);
+	} catch {
+		return null;
+	}
+};
+
+const readRelayMessageId = (message: string): null | string => {
+	try {
+		const parsed = JSON.parse(message) as unknown;
+		if (parsed && typeof parsed === "object") {
+			const { id } = parsed as Record<string, unknown>;
+			if (typeof id === "string" && id.length > 0) {
+				return id;
+			}
+		}
+	} catch {
+		return null;
+	}
+
+	return null;
+};
+
+const createToolSuccess = (id: string, result: JsonValue): ToolCallResult => ({
+	id,
+	ok: true,
+	result,
+	type: "tool.result",
+});
+
+const createToolError = (id: string, code: string, message: string): ToolCallResult => ({
+	error: {
+		code,
+		message,
+	},
+	id,
+	ok: false,
+	type: "tool.result",
+});
+
+const handleRelayToolCall = async (
+	backendDiscovery: BackendDiscovery,
+	request: ToolCallRequest,
+): Promise<ToolCallResult> => {
+	try {
+		return createToolSuccess(
+			request.id,
+			await backendDiscovery.callTool(request.tool, request.arguments as JsonObject),
+		);
+	} catch (error) {
+		return createToolError(
+			request.id,
+			"backend_tool_error",
+			error instanceof Error ? error.message : String(error),
+		);
+	}
+};
+
+const handleRelayMessage = async (
+	backendDiscovery: BackendDiscovery,
+	socket: WebSocket,
+	data: string,
+): Promise<void> => {
+	const request = parseRelayMessage(data);
+	if (!request) {
+		const id = readRelayMessageId(data);
+		if (id) {
+			socket.send(
+				JSON.stringify(createToolError(id, "invalid_relay_message", "Invalid relay tool call.")),
+			);
+		}
+		process.stdout.write(`relay ${data}\n`);
+		return;
+	}
+
+	socket.send(JSON.stringify(await handleRelayToolCall(backendDiscovery, request)));
+};
+
+const connectRelay = (
+	config: ResolvedBridgeConfig,
+	backendDiscovery: BackendDiscovery,
+): Promise<void> =>
 	// oxlint-disable-next-line promise/avoid-new
 	new Promise((resolve, reject) => {
 		const socket = new WebSocket(config.relay.url);
 
 		socket.addEventListener("open", () => {
-			socket.send(JSON.stringify(createBridgeHelloMessage(config, tools)));
+			socket.send(JSON.stringify(createBridgeHelloMessage(config, backendDiscovery.tools)));
 			process.stdout.write(`connected relay=${config.relay.url}\n`);
 		});
-		socket.addEventListener("message", (event) => {
-			process.stdout.write(`relay ${String(event.data)}\n`);
+		socket.addEventListener("message", async (event) => {
+			try {
+				await handleRelayMessage(backendDiscovery, socket, String(event.data));
+			} catch (error) {
+				process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+			}
 		});
 		socket.addEventListener("error", () => {
 			reject(new Error(`Failed to connect relay: ${config.relay.url}`));
@@ -68,7 +163,7 @@ const main = async (argv = process.argv.slice(2)): Promise<void> => {
 	process.stdout.write(`discovered_tools=${backendDiscovery.tools.length}\n`);
 
 	try {
-		await connectRelay(config, backendDiscovery.tools);
+		await connectRelay(config, backendDiscovery);
 	} finally {
 		await backendDiscovery.close();
 	}
@@ -83,4 +178,4 @@ if (import.meta.main) {
 	}
 }
 
-export { connectRelay, createBridgeHelloMessage, parseArgs };
+export { connectRelay, createBridgeHelloMessage, handleRelayMessage, parseArgs };
