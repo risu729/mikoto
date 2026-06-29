@@ -24,7 +24,13 @@ type McpToolsListResult = {
 	};
 };
 type BridgeListPayload = {
-	bridges: Array<{ id: string; os: string; status: string }>;
+	bridges: Array<{
+		id: string;
+		os: string;
+		status: string;
+		toolMetadata: Array<{ name: string }>;
+		tools: string[];
+	}>;
 };
 type WebSocketCloseSnapshot = {
 	code: number;
@@ -83,9 +89,14 @@ const sendBridgeHello = (webSocket: WebSocket): void => {
 				lastHeartbeat: "2026-06-29T00:00:00.000Z",
 				os: "windows",
 				status: "connected",
-				tools: [],
+				tools: ["stale.tool_name"],
 			},
-			tools: [],
+			tools: [
+				{
+					description: "Read browser context.",
+					name: "codex.codex_chrome_read",
+				},
+			],
 			type: "bridge.hello",
 		}),
 	);
@@ -234,6 +245,12 @@ describe("relay bridge registration", () => {
 				id: "dev-machine",
 				os: "windows",
 				status: "connected",
+				toolMetadata: [
+					{
+						name: "codex.codex_chrome_read",
+					},
+				],
+				tools: ["codex.codex_chrome_read"],
 			},
 		]);
 
