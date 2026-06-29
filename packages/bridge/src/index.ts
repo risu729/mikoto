@@ -1,7 +1,8 @@
-import { loadBridgeConfig } from "./config";
+import type { BridgeHelloMessage } from "@mikoto/protocol";
 
-type BridgeHelloMessage = import("@mikoto/protocol").BridgeHelloMessage;
-type ResolvedBridgeConfig = import("./config").ResolvedBridgeConfig;
+import { loadBridgeConfig } from "./config";
+import type { ResolvedBridgeConfig } from "./config";
+
 type CliOptions = {
 	configPath: string;
 };

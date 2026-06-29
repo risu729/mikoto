@@ -2,15 +2,14 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
+import type { CodexChromeReadInput } from "./chrome-read";
 import { createChromeReadTaskInput } from "./chrome-read";
+import type { CodexTaskInput } from "./codex";
 import { CodexTaskManager, MAX_TOOL_TIMEOUT_MS } from "./codex";
+import type { CodexMcpToolName } from "./tools";
 import { CODEX_MCP_TOOLS } from "./tools";
 
 type JsonValue = boolean | JsonValue[] | null | number | string | { [key: string]: JsonValue };
-
-type CodexTaskInput = import("./codex").CodexTaskInput;
-type CodexChromeReadInput = import("./chrome-read").CodexChromeReadInput;
-type CodexMcpToolName = import("./tools").CodexMcpToolName;
 
 type CreateCodexMcpServerOptions = {
 	taskManager?: CodexTaskManager;

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { execa } from "execa";
+import type { Options as ExecaOptions } from "execa";
 import { DateTime } from "luxon";
 
 const CHECK_AFTER_MS = 1_000;
@@ -53,8 +54,6 @@ type CodexTaskRecord = CodexTaskSnapshot & {
 type CodexTaskManagerOptions = {
 	runner?: CodexTaskRunner;
 };
-
-type ExecaOptions = import("execa").Options;
 
 const buildCodexExecArgs = (input: CodexTaskInput): string[] => {
 	const args = ["exec", "--json", "--skip-git-repo-check"];

@@ -2,9 +2,9 @@ import { readFile } from "node:fs/promises";
 import { hostname, platform } from "node:os";
 
 import { MikotoConfigSchema } from "@mikoto/protocol";
+import type { MikotoConfig } from "@mikoto/protocol";
 import { parse } from "smol-toml";
 
-type MikotoConfig = import("@mikoto/protocol").MikotoConfig;
 type ResolvedBridgeConfig = MikotoConfig & {
 	bridge: {
 		id: string;
