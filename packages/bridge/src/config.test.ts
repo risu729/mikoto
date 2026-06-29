@@ -27,21 +27,24 @@ url = "ws://localhost:8787/bridge"
 
 describe("createBridgeHelloMessage", () => {
 	it("creates the initial relay registration envelope", () => {
-		const message = createBridgeHelloMessage({
-			bridge: { id: "dev-machine" },
-			os: "linux",
-			relay: { url: "ws://localhost:8787/bridge" },
-			servers: [],
-		});
+		const message = createBridgeHelloMessage(
+			{
+				bridge: { id: "dev-machine" },
+				os: "linux",
+				relay: { url: "ws://localhost:8787/bridge" },
+				servers: [],
+			},
+			[{ inputSchema: { properties: {}, type: "object" }, name: "codex.codex_check" }],
+		);
 
 		expect(message).toMatchObject({
 			bridge: {
 				id: "dev-machine",
 				os: "linux",
 				status: "connected",
-				tools: [],
+				tools: ["codex.codex_check"],
 			},
-			tools: [],
+			tools: [{ name: "codex.codex_check" }],
 			type: "bridge.hello",
 		});
 		expect(Date.parse(message.bridge.lastHeartbeat)).not.toBeNaN();

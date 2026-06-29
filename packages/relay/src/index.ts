@@ -1,5 +1,5 @@
 import { BridgeHelloMessageSchema } from "@mikoto/protocol";
-import type { BridgeMetadata } from "@mikoto/protocol";
+import type { BridgeHelloMessage, BridgeMetadata, ToolInfo } from "@mikoto/protocol";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -11,8 +11,8 @@ type Env = {
 };
 type RegisteredBridge = BridgeMetadata & {
 	connectedAt: string;
+	toolMetadata: ToolInfo[];
 };
-type JsonValue = boolean | JsonValue[] | null | number | string | { [key: string]: JsonValue };
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -23,7 +23,7 @@ const getRelayStub = (env: Env): DurableObjectStub => {
 	return env.RELAY_DO.get(durableObjectId);
 };
 
-const createJsonToolResult = (payload: JsonValue): CallToolResult => ({
+const createJsonToolResult = (payload: unknown): CallToolResult => ({
 	content: [
 		{
 			text: JSON.stringify(payload),
@@ -167,7 +167,7 @@ class RelayDurableObject {
 			return;
 		}
 
-		const registered = await this.registerBridge(parsed.data.bridge, ws);
+		const registered = await this.registerBridge(parsed.data, ws);
 		if (!registered) {
 			return;
 		}
@@ -175,7 +175,8 @@ class RelayDurableObject {
 		sendBridgeRegistered(ws, parsed.data.bridge.id);
 	}
 
-	private async registerBridge(bridge: BridgeMetadata, ws: WebSocket): Promise<boolean> {
+	private async registerBridge(message: BridgeHelloMessage, ws: WebSocket): Promise<boolean> {
+		const { bridge } = message;
 		const key = `bridge:${bridge.id}`;
 		const existing = await this.state.storage.get<RegisteredBridge>(key);
 
@@ -188,6 +189,8 @@ class RelayDurableObject {
 		await this.state.storage.put(key, {
 			...bridge,
 			connectedAt: attachment?.connectedAt ?? new Date().toISOString(),
+			toolMetadata: message.tools,
+			tools: message.tools.map((tool) => tool.name),
 		});
 		ws.serializeAttachment({
 			...(ws.deserializeAttachment() as object | undefined),

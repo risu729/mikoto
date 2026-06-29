@@ -1,5 +1,6 @@
-import type { BridgeHelloMessage } from "@mikoto/protocol";
+import type { BridgeHelloMessage, ToolInfo } from "@mikoto/protocol";
 
+import { startConfiguredBackends } from "./backends";
 import { loadBridgeConfig } from "./config";
 import type { ResolvedBridgeConfig } from "./config";
 
@@ -16,25 +17,28 @@ const parseArgs = (argv: string[]): CliOptions => {
 
 const nowIso = (): string => new Date().toISOString();
 
-const createBridgeHelloMessage = (config: ResolvedBridgeConfig): BridgeHelloMessage => ({
+const createBridgeHelloMessage = (
+	config: ResolvedBridgeConfig,
+	tools: ToolInfo[] = [],
+): BridgeHelloMessage => ({
 	bridge: {
 		id: config.bridge.id,
 		lastHeartbeat: nowIso(),
 		os: config.os,
 		status: "connected",
-		tools: [],
+		tools: tools.map((tool) => tool.name),
 	},
-	tools: [],
+	tools,
 	type: "bridge.hello",
 });
 
-const connectRelay = (config: ResolvedBridgeConfig): Promise<void> =>
+const connectRelay = (config: ResolvedBridgeConfig, tools: ToolInfo[] = []): Promise<void> =>
 	// oxlint-disable-next-line promise/avoid-new
 	new Promise((resolve, reject) => {
 		const socket = new WebSocket(config.relay.url);
 
 		socket.addEventListener("open", () => {
-			socket.send(JSON.stringify(createBridgeHelloMessage(config)));
+			socket.send(JSON.stringify(createBridgeHelloMessage(config, tools)));
 			process.stdout.write(`connected relay=${config.relay.url}\n`);
 		});
 		socket.addEventListener("message", (event) => {
@@ -56,16 +60,18 @@ const connectRelay = (config: ResolvedBridgeConfig): Promise<void> =>
 const main = async (argv = process.argv.slice(2)): Promise<void> => {
 	const { configPath } = parseArgs(argv);
 	const config = await loadBridgeConfig(configPath);
-	const unsupportedHttp = config.servers.find((server) => server.transport === "http");
-
-	if (unsupportedHttp) {
-		throw new Error(`HTTP backend transport is not implemented yet: ${unsupportedHttp.id}`);
-	}
+	const backendDiscovery = await startConfiguredBackends(config.servers);
 
 	process.stdout.write("mikoto bridge scaffold\n");
 	process.stdout.write(`bridge=${config.bridge.id} os=${config.os} relay=${config.relay.url}\n`);
 	process.stdout.write(`configured_backends=${config.servers.length}\n`);
-	await connectRelay(config);
+	process.stdout.write(`discovered_tools=${backendDiscovery.tools.length}\n`);
+
+	try {
+		await connectRelay(config, backendDiscovery.tools);
+	} finally {
+		await backendDiscovery.close();
+	}
 };
 
 if (import.meta.main) {

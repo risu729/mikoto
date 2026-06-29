@@ -2,9 +2,9 @@
 
 Local bridge process scaffold.
 
-The bridge loads `mikoto.toml`, resolves bridge metadata, and connects outbound
-to the relay over WebSocket. The MVP scaffold validates config, registers the
-bridge with the relay, and rejects HTTP backends as unimplemented.
+The bridge loads `mikoto.toml`, starts configured stdio backend MCP servers,
+discovers their tools, and connects outbound to the relay over WebSocket. HTTP
+backends are still rejected as unimplemented.
 
 ## Run
 
