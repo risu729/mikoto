@@ -74,12 +74,118 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Relay tests
         run: mise run test:relay
+  docs-deploy:
+    name: Docs Deploy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Install mise
+        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+        with:
+          version: 2026.6.13
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MISE_ENABLE_TOOLS: bun,node,wrangler
+      - name: Check Cloudflare token
+        id: cloudflare-token
+        if: github.repository == 'risu729/mikoto' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [[ -n "${CLOUDFLARE_API_TOKEN}" && -n "${CLOUDFLARE_ACCOUNT_ID}" ]]; then
+            echo "available=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "available=false" >> "${GITHUB_OUTPUT}"
+          fi
+      - name: Upload docs preview
+        if: github.repository == 'risu729/mikoto' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.cloudflare-token.outputs.available == 'true'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          PREVIEW_ALIAS: pr-${{ github.event.pull_request.number }}
+        run: |
+          output_dir="${RUNNER_TEMP}/wrangler-output-docs-preview-${GITHUB_RUN_ID}"
+          rm -rf "${output_dir}"
+          mkdir -p "${output_dir}"
+          export WRANGLER_OUTPUT_FILE_DIRECTORY="${output_dir}"
+
+          mise run docs:upload-preview -- --preview-alias "${PREVIEW_ALIAS}"
+
+          shopt -s nullglob
+          files=("${output_dir}"/wrangler-output-*.json)
+          if [[ "${#files[@]}" -eq 0 ]]; then
+            echo "Unable to find Wrangler preview output" >&2
+            exit 1
+          fi
+
+          preview_url="$(jq -r 'select(.type == "version-upload") | .preview_url // empty' "${files[@]}" | head -n 1)"
+          preview_alias_url="$(jq -r 'select(.type == "version-upload") | .preview_alias_url // empty' "${files[@]}" | head -n 1)"
+          version_preview="_Unavailable_"
+          branch_alias_preview="_Unavailable_"
+          if [[ -n "${preview_url}" ]]; then
+            version_preview="<${preview_url}>"
+          fi
+          if [[ -n "${preview_alias_url}" ]]; then
+            branch_alias_preview="<${preview_alias_url}>"
+          fi
+
+          {
+            echo "### Cloudflare Workers Preview"
+            echo
+            echo "Branch alias: \`${PREVIEW_ALIAS}\`"
+            echo
+            echo "| Name | URL |"
+            echo "| - | - |"
+            echo "| Version preview | ${version_preview} |"
+            echo "| Branch alias preview | ${branch_alias_preview} |"
+          } >> "${GITHUB_STEP_SUMMARY}"
+      - name: Deploy docs
+        if: github.repository == 'risu729/mikoto' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cloudflare-token.outputs.available == 'true'
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          output_dir="${RUNNER_TEMP}/wrangler-output-docs-production-${GITHUB_RUN_ID}"
+          rm -rf "${output_dir}"
+          mkdir -p "${output_dir}"
+          export WRANGLER_OUTPUT_FILE_DIRECTORY="${output_dir}"
+
+          mise run docs:deploy
+
+          shopt -s nullglob
+          files=("${output_dir}"/wrangler-output-*.json)
+          targets=""
+          if [[ "${#files[@]}" -gt 0 ]]; then
+            targets="$(jq -r 'select(.type == "deploy") | (.targets // [])[]' "${files[@]}")"
+          fi
+
+          {
+            echo "### Cloudflare Workers Production Deploy"
+            echo
+            echo "| Target |"
+            echo "| - |"
+            if [[ -n "${targets}" ]]; then
+              while IFS= read -r target; do
+                echo "| <${target}> |"
+              done <<< "${targets}"
+            else
+              echo "| _Unavailable_ |"
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
   ci-check:
     name: CI Check
     needs:
       - lint
       - test
       - relay-test
+      - docs-deploy
     if: always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
     runs-on: ubuntu-24.04
     timeout-minutes: 5

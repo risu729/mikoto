@@ -114,3 +114,13 @@ run = "cd packages/docs && bunx astro build"
 [tasks."docs:preview"]
 description = "Preview the built Starlight docs site."
 run = "cd packages/docs && bunx astro preview"
+
+[tasks."docs:upload-preview"]
+description = "Build and upload a docs Worker preview version with Wrangler."
+depends = ["docs:build"]
+run = "cd packages/docs && wrangler versions upload"
+
+[tasks."docs:deploy"]
+description = "Build and deploy the docs Worker with Wrangler."
+depends = ["docs:build"]
+run = "cd packages/docs && wrangler deploy"
