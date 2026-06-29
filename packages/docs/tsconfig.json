@@ -1,0 +1,9 @@
+{
+	"extends": ["../../tsconfig.base.json", "astro/tsconfigs/strict"],
+	"compilerOptions": {
+		"noPropertyAccessFromIndexSignature": false,
+		"types": ["astro/client"]
+	},
+	"exclude": ["dist", "node_modules"],
+	"include": ["src/env.d.ts"]
+}

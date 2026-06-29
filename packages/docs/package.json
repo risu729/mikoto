@@ -1,0 +1,11 @@
+{
+	"name": "@mikoto/docs",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"dependencies": {
+		"@astrojs/starlight": "0.41.1",
+		"astro": "7.0.3",
+		"sharp": "0.35.2"
+	}
+}

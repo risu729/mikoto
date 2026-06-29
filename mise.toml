@@ -102,3 +102,15 @@ run = "cd packages/relay && wrangler dev"
 [tasks."relay:deploy"]
 description = "Deploy the relay Worker with Wrangler."
 run = "cd packages/relay && wrangler deploy"
+
+[tasks."docs:dev"]
+description = "Run the Starlight docs site locally."
+run = "cd packages/docs && bunx astro dev"
+
+[tasks."docs:build"]
+description = "Build the Starlight docs site."
+run = "cd packages/docs && bunx astro build"
+
+[tasks."docs:preview"]
+description = "Preview the built Starlight docs site."
+run = "cd packages/docs && bunx astro preview"
