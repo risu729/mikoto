@@ -9,7 +9,7 @@ url = "ws://localhost:8787/bridge"
 id = "codex"
 transport = "stdio"
 command = "bun"
-args = ["--cwd", "packages/codex-mcp", "run", "start"]
+args = ["packages/codex-mcp/src/index.ts"]
 
 [[servers.aliases]]
 name = "local_chrome_read"

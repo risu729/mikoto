@@ -11,12 +11,10 @@ or raw Codex internals.
 
 ## Status
 
-This repository is currently in the design stage. There is no installable
-package or runnable MVP yet.
-
-Detailed implementation notes live in [design.md](design.md). That file is
-temporary and should be removed once the implementation makes the design
-concrete in code and stable README documentation.
+This repository has an early local development path for the relay, bridge, and
+Codex MCP server. The public deployment path is still incomplete, and
+`design.md` remains the temporary detailed implementation note until the MVP is
+stable.
 
 ## Intended Users
 
@@ -57,11 +55,11 @@ sequenceDiagram
   participant Worker as Relay Worker
   participant DO as Relay Durable Object
 
-  ChatGPT->>Worker: call mikoto.list_bridges
-  Worker->>DO: handle list_bridges
+  ChatGPT->>Worker: call mikoto_list_bridges
+  Worker->>DO: handle bridge listing
   DO->>DO: read bridge metadata
   DO-->>Worker: bridges {id, os, status, lastHeartbeat, tools}
-  Worker-->>ChatGPT: mikoto.list_bridges result
+  Worker-->>ChatGPT: mikoto_list_bridges result
 ```
 
 ## Safety Model
@@ -79,45 +77,172 @@ Tools should return structured, task-oriented data for the request.
 
 ## Setup
 
-Setup commands are not available yet because the MVP is not implemented.
-
-Planned prerequisites:
+Local prerequisites:
 
 - Bun
 - mise
-- Cloudflare account
-- Cloudflare WARP on each local computer that will run `mikoto bridge`
-- Cloudflare Access Managed OAuth for the ChatGPT-facing MCP endpoint
-- Codex CLI available through `mise x codex@latest -- codex ...`
+- Wrangler, provided through mise
+- Codex CLI available through `mise x codex@latest -- codex ...` for Codex
+  backend tasks
 
-## Deployment
+Install dependencies:
 
-The Cloudflare relay should be deployed from GitHub Actions using
-`cloudflare/wrangler-action` or a raw `wrangler deploy` command with a
-Cloudflare API token.
+```sh
+mise trust
+mise install
+bun install --frozen-lockfile
+```
 
-Cloudflare Workers Builds are not used for this repository.
+Create a local config:
 
-## Usage
+```sh
+cp mikoto.example.toml mikoto.toml
+```
 
-Usage commands are not available yet because the MVP is not implemented.
+The example config connects the bridge to `ws://localhost:8787/bridge`, starts
+`@mikoto/codex-mcp` as a stdio backend, exposes backend-prefixed tools such as
+`codex.codex_check`, and adds the `local_chrome_read` alias.
 
-Planned flow:
+## Local Development
 
-1. Deploy the Cloudflare relay.
-2. Start `mikoto bridge` through the `bridge` mise task; it connects outbound to
-   the relay.
-3. Connect the ChatGPT App to the Access-protected Streamable HTTP MCP endpoint.
-4. Call `mikoto.list_bridges`.
-5. Call a configured tool or alias such as `local_chrome_read`.
+Run the local relay in one shell:
+
+```sh
+mise run relay:dev
+```
+
+Wrangler serves the local Worker at `http://localhost:8787`. The ChatGPT-facing
+MCP endpoint is `http://localhost:8787/mcp`, and the bridge WebSocket endpoint
+is `ws://localhost:8787/bridge`.
+
+Run the bridge in another shell:
+
+```sh
+mise run bridge
+```
+
+The bridge loads `mikoto.toml`, starts configured stdio backend MCP servers
+eagerly, discovers their tools, connects outbound to the relay, and sends a
+static tool snapshot. If the relay connection is lost, the bridge exits for the
+MVP.
+
+You can override local config without editing `mikoto.toml`:
+
+```sh
+MIKOTO_RELAY_URL=ws://localhost:8787/bridge mise run bridge
+MIKOTO_BRIDGE_ID=my-dev-machine mise run bridge
+```
+
+Inspect connected bridges through the local MCP endpoint:
+
+```sh
+curl -s http://localhost:8787/mcp \
+  -H 'content-type: application/json' \
+  -H 'accept: application/json, text/event-stream' \
+  -H 'mcp-protocol-version: 2025-06-18' \
+  --data '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "mikoto_list_bridges",
+      "arguments": {}
+    }
+  }'
+```
+
+Inspect the ChatGPT-facing tool list:
+
+```sh
+curl -s http://localhost:8787/mcp \
+  -H 'content-type: application/json' \
+  -H 'accept: application/json, text/event-stream' \
+  -H 'mcp-protocol-version: 2025-06-18' \
+  --data '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
+```
+
+The relay exposes `mikoto_list_bridges` plus tools announced by connected
+bridges. Local backend tools keep their backend-prefixed names, for example
+`codex.codex_check`, `codex.codex_task`, and `codex.codex_chrome_read`. If one
+connected bridge exposes a tool, callers can omit bridge selection. If multiple
+bridges expose the same tool, callers must select one with MCP request
+`_meta["mikoto/bridgeId"]`.
 
 ## Configuration
 
 Configuration starts as project-local `mikoto.toml` with schema validation.
 
-The backend MCP server config schema includes both `stdio` and `http`
-transports. The first implementation supports `stdio`; configured `http`
-backends return a clear unimplemented error until support lands.
+```toml
+[bridge]
+id = "dev-machine"
+
+[relay]
+url = "ws://localhost:8787/bridge"
+
+[[servers]]
+id = "codex"
+transport = "stdio"
+command = "bun"
+args = ["packages/codex-mcp/src/index.ts"]
+
+[[servers.aliases]]
+name = "local_chrome_read"
+target = "codex.codex_chrome_read"
+```
+
+Supported fields:
+
+- `[bridge].id`: optional bridge identity. Defaults to the local computer name.
+- `[relay].url`: relay WebSocket URL. Required.
+- `[[servers]].id`: backend MCP id used as the tool-name prefix.
+- `[[servers]].transport`: `stdio` is implemented. `http` is schema-supported
+  but returns an unimplemented error in the bridge.
+- `[[servers]].command`, `args`, `cwd`, `env`: stdio backend launch settings.
+- `[[servers.aliases]]`: optional exposed aliases that route to another exposed
+  tool.
+
+Configured backend MCP servers are exposed by default. Tool names are prefixed
+with the backend id, so backend tool `codex_check` from server `codex` becomes
+`codex.codex_check`.
+
+## Deployment
+
+Cloudflare deployment is separate from local development.
+
+Planned deployment prerequisites:
+
+- Cloudflare account
+- Cloudflare WARP on each local computer that will run `mikoto bridge`
+- Cloudflare Access Managed OAuth for the ChatGPT-facing MCP endpoint
+- A separate Cloudflare Access policy for the bridge WebSocket endpoint
+
+Cloudflare Workers Builds are not used for this repository.
+
+The Cloudflare relay should be deployed from GitHub Actions using
+`cloudflare/wrangler-action` or a raw `wrangler deploy` command with a
+Cloudflare API token:
+
+```sh
+mise run relay:deploy
+```
+
+## Usage
+
+Local flow:
+
+1. Start the local relay with `mise run relay:dev`.
+2. Start `mikoto bridge` with `mise run bridge`.
+3. Verify `mikoto_list_bridges` through the local MCP endpoint.
+4. Verify configured tools with `tools/list`.
+5. Call a configured tool such as `codex.codex_check` or `local_chrome_read`.
+
+Deployed flow:
+
+1. Deploy the Cloudflare relay.
+2. Protect the ChatGPT-facing MCP endpoint with Cloudflare Access OAuth.
+3. Protect the bridge WebSocket endpoint for local WARP clients.
+4. Start `mikoto bridge` with `MIKOTO_RELAY_URL=wss://.../bridge`.
+5. Connect the ChatGPT App to the Access-protected Streamable HTTP MCP endpoint.
 
 ## Testing
 
