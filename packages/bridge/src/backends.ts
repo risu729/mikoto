@@ -1,5 +1,5 @@
-import { JsonObjectSchema } from "@mikoto/protocol";
-import type { BackendServer, ToolInfo } from "@mikoto/protocol";
+import { JsonObjectSchema, JsonValueSchema } from "@mikoto/protocol";
+import type { BackendServer, JsonObject, JsonValue, ToolInfo } from "@mikoto/protocol";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
 	getDefaultEnvironment,
@@ -9,17 +9,27 @@ import type { StdioServerParameters } from "@modelcontextprotocol/sdk/client/std
 import type { ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
 
 type StdioBackendServer = Extract<BackendServer, { transport: "stdio" }>;
+type BackendToolResult = Awaited<ReturnType<Client["callTool"]>>;
 type BackendMcpClient = {
+	callTool: (params: { arguments: JsonObject; name: string }) => Promise<BackendToolResult>;
 	close: () => Promise<void>;
 	listTools: () => Promise<ListToolsResult>;
 };
 type BackendClientFactory = (server: StdioBackendServer) => Promise<BackendMcpClient>;
+type ToolRoute = {
+	backendId: string;
+	backendToolName: string;
+	client: BackendMcpClient;
+};
 type StartedBackend = {
+	client: BackendMcpClient;
 	close: () => Promise<void>;
 	id: string;
+	routes: Map<string, ToolRoute>;
 	tools: ToolInfo[];
 };
 type BackendDiscovery = {
+	callTool: (tool: string, args: JsonObject) => Promise<JsonValue>;
 	close: () => Promise<void>;
 	tools: ToolInfo[];
 };
@@ -79,6 +89,9 @@ const createPrefixedToolInfo = (
 	return toolInfo;
 };
 
+const toJsonValue = (value: unknown): JsonValue =>
+	JsonValueSchema.parse(JSON.parse(JSON.stringify(value)) as unknown);
+
 const addUniqueTool = (tools: Map<string, ToolInfo>, tool: ToolInfo): void => {
 	if (tools.has(tool.name)) {
 		throw new Error(`Duplicate exposed tool name: ${tool.name}`);
@@ -87,15 +100,35 @@ const addUniqueTool = (tools: Map<string, ToolInfo>, tool: ToolInfo): void => {
 	tools.set(tool.name, tool);
 };
 
-const addBackendTools = (tools: Map<string, ToolInfo>, started: StartedBackend[]): void => {
+const addToolRoute = (routes: Map<string, ToolRoute>, toolName: string, route: ToolRoute): void => {
+	if (routes.has(toolName)) {
+		throw new Error(`Duplicate exposed tool name: ${toolName}`);
+	}
+
+	routes.set(toolName, route);
+};
+
+const addBackendTools = (
+	routes: Map<string, ToolRoute>,
+	tools: Map<string, ToolInfo>,
+	started: StartedBackend[],
+): void => {
 	for (const backend of started) {
 		for (const tool of backend.tools) {
 			addUniqueTool(tools, tool);
+			const route = backend.routes.get(tool.name);
+			if (route) {
+				addToolRoute(routes, tool.name, route);
+			}
 		}
 	}
 };
 
-const addAliasTools = (tools: Map<string, ToolInfo>, config: BackendServer[]): void => {
+const addAliasTools = (
+	routes: Map<string, ToolRoute>,
+	tools: Map<string, ToolInfo>,
+	config: BackendServer[],
+): void => {
 	for (const server of config) {
 		for (const alias of server.aliases) {
 			const target = tools.get(alias.target);
@@ -107,17 +140,46 @@ const addAliasTools = (tools: Map<string, ToolInfo>, config: BackendServer[]): v
 				...target,
 				name: alias.name,
 			});
+			const route = routes.get(alias.target);
+			if (route) {
+				addToolRoute(routes, alias.name, route);
+			}
 		}
 	}
 };
 
-const buildExposedTools = (config: BackendServer[], started: StartedBackend[]): ToolInfo[] => {
+const buildBackendRoutes = (
+	config: BackendServer[],
+	started: StartedBackend[],
+): { routes: Map<string, ToolRoute>; tools: ToolInfo[] } => {
+	const routes = new Map<string, ToolRoute>();
 	const tools = new Map<string, ToolInfo>();
 
-	addBackendTools(tools, started);
-	addAliasTools(tools, config);
+	addBackendTools(routes, tools, started);
+	addAliasTools(routes, tools, config);
 
-	return Array.from(tools.values()).sort((left, right) => left.name.localeCompare(right.name));
+	return {
+		routes,
+		tools: Array.from(tools.values()).sort((left, right) => left.name.localeCompare(right.name)),
+	};
+};
+
+const createBackendToolRoutes = (
+	server: StdioBackendServer,
+	client: BackendMcpClient,
+	tools: ToolInfo[],
+): Map<string, ToolRoute> => {
+	const routes = new Map<string, ToolRoute>();
+
+	for (const tool of tools) {
+		routes.set(tool.name, {
+			backendId: server.id,
+			backendToolName: tool.name.slice(server.id.length + 1),
+			client,
+		});
+	}
+
+	return routes;
 };
 
 const startStdioBackend = async (
@@ -126,14 +188,17 @@ const startStdioBackend = async (
 ): Promise<StartedBackend> => {
 	const client = await clientFactory(server);
 	const backend = {
+		client,
 		close: () => client.close(),
 		id: server.id,
+		routes: new Map<string, ToolRoute>(),
 		tools: [] as ToolInfo[],
 	};
 
 	try {
 		const { tools } = await client.listTools();
 		backend.tools = tools.map((tool) => createPrefixedToolInfo(server, tool));
+		backend.routes = createBackendToolRoutes(server, client, backend.tools);
 		return backend;
 	} catch (error) {
 		await backend.close();
@@ -185,10 +250,26 @@ const startStdioBackends = async (
 const createBackendDiscovery = (
 	servers: BackendServer[],
 	started: StartedBackend[],
-): BackendDiscovery => ({
-	close: () => closeStartedBackends(started),
-	tools: buildExposedTools(servers, started),
-});
+): BackendDiscovery => {
+	const { routes, tools } = buildBackendRoutes(servers, started);
+
+	return {
+		callTool: async (tool, args) => {
+			const route = routes.get(tool);
+			if (!route) {
+				throw new Error(`Tool is not exposed by this bridge: ${tool}`);
+			}
+
+			const result = await route.client.callTool({
+				arguments: args,
+				name: route.backendToolName,
+			});
+			return toJsonValue(result);
+		},
+		close: () => closeStartedBackends(started),
+		tools,
+	};
+};
 
 const startConfiguredBackends = async (
 	servers: BackendServer[],
@@ -209,6 +290,5 @@ export {
 	type BackendClientFactory,
 	type BackendDiscovery,
 	type BackendMcpClient,
-	buildExposedTools,
 	startConfiguredBackends,
 };
