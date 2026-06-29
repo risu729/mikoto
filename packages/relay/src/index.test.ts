@@ -31,6 +31,8 @@ type WebSocketCloseSnapshot = {
 	reason: string;
 };
 
+const MCP_PROTOCOL_VERSION = "2025-06-18";
+
 const waitForMessage = (webSocket: WebSocket): Promise<string> =>
 	// oxlint-disable-next-line promise/avoid-new
 	new Promise((resolve, reject) => {
@@ -95,7 +97,7 @@ const postMcp = async (body: unknown): Promise<Response> =>
 		headers: {
 			accept: "application/json, text/event-stream",
 			"content-type": "application/json",
-			"mcp-protocol-version": "2025-06-18",
+			"mcp-protocol-version": MCP_PROTOCOL_VERSION,
 		},
 		method: "POST",
 	});
@@ -111,7 +113,7 @@ const initializeMcp = async (): Promise<McpInitializeResult> => {
 				name: "mikoto-relay-test",
 				version: "0.0.0",
 			},
-			protocolVersion: "2025-06-18",
+			protocolVersion: MCP_PROTOCOL_VERSION,
 		},
 	});
 
@@ -158,7 +160,7 @@ const fetchUnsupportedMcpMethod = async (): Promise<Response> =>
 		headers: {
 			accept: "application/json, text/event-stream",
 			"content-type": "application/json",
-			"mcp-protocol-version": "2025-06-18",
+			"mcp-protocol-version": MCP_PROTOCOL_VERSION,
 		},
 		method: "PUT",
 	});
@@ -194,7 +196,7 @@ describe("relay MCP endpoint", () => {
 			capabilities: {
 				tools: {},
 			},
-			protocolVersion: "2025-06-18",
+			protocolVersion: MCP_PROTOCOL_VERSION,
 			serverInfo: {
 				name: "mikoto-relay",
 				version: "0.0.0",

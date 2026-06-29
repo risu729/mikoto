@@ -59,6 +59,7 @@ const createRelayMcpServer = (env: Env): McpServer => {
 type HonoContext = Context<{ Bindings: Env }>;
 
 app.all("/mcp", async (context: HonoContext) => {
+	// Stateless SDK transports must be request-scoped; reusing one across requests throws.
 	const server = createRelayMcpServer(context.env);
 	const transport = new WebStandardStreamableHTTPServerTransport({
 		enableJsonResponse: true,
