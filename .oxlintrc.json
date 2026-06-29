@@ -19,6 +19,7 @@
 	},
 	"rules": {
 		"eslint/no-magic-numbers": "allow",
+		"eslint/no-duplicate-imports": "allow",
 		"eslint/no-ternary": "allow",
 		"eslint/sort-imports": "allow",
 		"import/no-default-export": "allow",

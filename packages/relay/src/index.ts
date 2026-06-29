@@ -1,8 +1,8 @@
 import { BridgeHelloMessageSchema } from "@mikoto/protocol";
+import type { BridgeMetadata, JsonObject } from "@mikoto/protocol";
+import type { Context } from "hono";
 import { Hono } from "hono";
 
-type BridgeMetadata = import("@mikoto/protocol").BridgeMetadata;
-type JsonObject = import("@mikoto/protocol").JsonObject;
 type Env = {
 	RELAY_DO: DurableObjectNamespace;
 };
@@ -102,7 +102,7 @@ const handleMcpRequest = async (request: McpRequest, env: Env) => {
 	}
 };
 
-type HonoContext = import("hono").Context<{ Bindings: Env }>;
+type HonoContext = Context<{ Bindings: Env }>;
 
 app.post("/mcp", async (context: HonoContext) => {
 	const request = (await context.req.json().catch(() => null)) as McpRequest | null;
