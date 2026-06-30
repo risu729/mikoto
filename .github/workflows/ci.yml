@@ -96,7 +96,7 @@ jobs:
         id: cloudflare-token
         if: github.repository == 'risu729/mikoto' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           if [[ -n "${CLOUDFLARE_API_TOKEN}" && -n "${CLOUDFLARE_ACCOUNT_ID}" ]]; then
@@ -107,7 +107,7 @@ jobs:
       - name: Upload docs preview
         if: github.repository == 'risu729/mikoto' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.cloudflare-token.outputs.available == 'true'
         env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           PREVIEW_ALIAS: pr-${{ github.event.pull_request.number }}
         run: |
@@ -149,7 +149,7 @@ jobs:
       - name: Deploy docs
         if: github.repository == 'risu729/mikoto' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cloudflare-token.outputs.available == 'true'
         env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           output_dir="${RUNNER_TEMP}/wrangler-output-docs-production-${GITHUB_RUN_ID}"

@@ -21,10 +21,13 @@ docs Worker and routes production traffic through `mikoto.takuk.me`. The
 production `workers.dev` route is disabled; preview URLs remain enabled for pull
 request review.
 
-Required GitHub Actions secrets:
+Required GitHub Actions variables:
 
 - `CLOUDFLARE_ACCOUNT_ID`: Cloudflare account ID for the account that owns the
   docs Worker.
+
+Required GitHub Actions secrets:
+
 - `CLOUDFLARE_API_TOKEN`: Cloudflare API token used only by GitHub Actions.
 
 Do not store Cloudflare API tokens in the repository or in local config files.
