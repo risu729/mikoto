@@ -1,0 +1,12 @@
+name = "mikoto-docs"
+compatibility_date = "2026-06-25"
+workers_dev = false
+preview_urls = true
+
+[[routes]]
+pattern = "mikoto.takuk.me"
+custom_domain = true
+
+[assets]
+directory = "./dist"
+not_found_handling = "404-page"
