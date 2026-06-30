@@ -111,8 +111,13 @@ run = "cd packages/relay && wrangler deploy"
 description = "Run the Starlight docs site locally."
 run = "cd packages/docs && bunx astro dev"
 
+[tasks."docs:install-browser"]
+description = "Install the Playwright browser used for build-time Mermaid rendering."
+run = "cd packages/docs && bunx playwright install chromium"
+
 [tasks."docs:build"]
 description = "Build the Starlight docs site."
+depends = ["docs:install-browser"]
 run = "cd packages/docs && bunx astro build"
 
 [tasks."docs:preview"]

@@ -1,12 +1,10 @@
+import { unified } from "@astrojs/markdown-remark";
 import starlight from "@astrojs/starlight";
-import mermaid from "astro-mermaid";
 import { defineConfig } from "astro/config";
+import rehypeMermaid from "rehype-mermaid";
 
 export default defineConfig({
 	integrations: [
-		mermaid({
-			enableLog: false,
-		}),
 		starlight({
 			sidebar: [
 				{
@@ -24,4 +22,9 @@ export default defineConfig({
 			title: "mikoto",
 		}),
 	],
+	markdown: {
+		processor: unified({
+			rehypePlugins: [rehypeMermaid],
+		}),
+	},
 });
