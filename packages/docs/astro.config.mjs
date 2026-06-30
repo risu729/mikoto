@@ -1,8 +1,12 @@
 import starlight from "@astrojs/starlight";
+import mermaid from "astro-mermaid";
 import { defineConfig } from "astro/config";
 
 export default defineConfig({
 	integrations: [
+		mermaid({
+			enableLog: false,
+		}),
 		starlight({
 			sidebar: [
 				{
