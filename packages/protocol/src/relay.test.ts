@@ -42,7 +42,7 @@ describe("BridgeHelloMessageSchema", () => {
 	it("defaults missing tool input schemas to an object schema", () => {
 		const message = BridgeHelloMessageSchema.parse({
 			bridge: bridgeMetadata,
-			tools: [{ name: "codex.codex_check" }],
+			tools: [{ name: "codex.codex_task" }],
 			type: "bridge.hello",
 		});
 
@@ -102,7 +102,7 @@ describe("RelayToBridgeMessageSchema", () => {
 	it("defaults missing tool call arguments", () => {
 		const request = RelayToBridgeMessageSchema.parse({
 			id: "call-1",
-			tool: "codex.codex_check",
+			tool: "codex.codex_task",
 			type: "tool.call",
 		});
 
@@ -115,7 +115,7 @@ describe("RelayToBridgeMessageSchema", () => {
 				value: Number.NaN,
 			},
 			id: "call-1",
-			tool: "codex.codex_check",
+			tool: "codex.codex_task",
 			type: "tool.call",
 		});
 

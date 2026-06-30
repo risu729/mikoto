@@ -9,8 +9,8 @@ title: Architecture
   endpoint.
 - `mikoto bridge`: local router that connects outbound to the relay and routes
   calls to configured backend MCP servers.
-- `mikoto-codex-mcp`: standalone MCP server that owns bounded Codex CLI task
-  execution.
+- `mikoto-codex-mcp`: standalone MCP server that owns a local Codex app-server
+  process and bounded Codex tool execution.
 - `protocol`: shared schemas, relay and bridge messages, and config validation.
 
 The ChatGPT-facing MCP endpoint uses Streamable HTTP. The bridge connects
@@ -24,7 +24,7 @@ flowchart TD
   Worker --> DO[Durable Object bridge/session coordinator]
   Bridge[mikoto bridge] -->|outbound WebSocket| DO
   Bridge --> CodexMCP[mikoto-codex-mcp]
-  CodexMCP --> Codex[codex exec]
+  CodexMCP --> Codex[codex app-server]
   Codex --> Chrome[official @Chrome]
   Bridge --> OtherMCP[other configured local MCP servers]
 ```

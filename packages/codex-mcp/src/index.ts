@@ -3,7 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { createCodexMcpServer } from "./server";
 
 const main = async (): Promise<void> => {
-	const server = createCodexMcpServer();
+	const server = await createCodexMcpServer();
 	const transport = new StdioServerTransport();
 
 	process.stderr.write("mikoto-codex-mcp listening on stdio\n");

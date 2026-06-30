@@ -38,7 +38,7 @@ curl -s http://localhost:8787/mcp \
 
 The relay exposes `mikoto_list_bridges` plus tools announced by connected
 bridges. Local backend tools keep their backend-prefixed names, for example
-`codex.codex_check`, `codex.codex_task`, and `codex.codex_chrome_read`.
+`codex.codex_task` and `codex.codex_chrome_read`.
 
 If one connected bridge exposes a tool, callers can omit bridge selection. If
 multiple bridges expose the same tool, callers must select one with MCP request

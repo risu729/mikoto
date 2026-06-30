@@ -35,8 +35,8 @@ target = "codex.codex_chrome_read"
   tool.
 
 Configured backend MCP servers are exposed by default. Tool names are prefixed
-with the backend id, so backend tool `codex_check` from server `codex` becomes
-`codex.codex_check`.
+with the backend id, so backend tool `codex_chrome_read` from server `codex`
+becomes `codex.codex_chrome_read`.
 
 You can override local config without editing `mikoto.toml`:
 

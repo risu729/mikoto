@@ -1,14 +1,10 @@
 const CODEX_MCP_TOOLS = [
 	{
-		description: "Run a bounded Codex task.",
+		description: "Run a bounded read-only Codex task and return the final result.",
 		name: "codex_task",
 	},
 	{
-		description: "Check Codex task or session state.",
-		name: "codex_check",
-	},
-	{
-		description: "Run a read-only browser request through Codex and @Chrome.",
+		description: "Run a bounded read-only browser request through Codex and @Chrome.",
 		name: "codex_chrome_read",
 	},
 ] as const;

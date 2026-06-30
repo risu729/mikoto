@@ -1,32 +1,72 @@
-import { describe, expect, it } from "vitest";
+import { setTimeout as sleep } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 
-import { createChromeReadPrompt, createChromeReadTaskInput } from "./chrome-read";
+import { afterEach, describe, expect, it } from "vitest";
+
 import {
-	buildCodexExecArgs,
-	CodexTaskManager,
-	createExecaOptions,
+	createChromeReadPrompt,
+	createChromeReadTaskInput,
+	createReadOnlyTaskPrompt,
+} from "./chrome-read";
+import {
+	CODEX_CHROME_READ_MODEL,
+	CODEX_CHROME_READ_REASONING_EFFORT,
+	CODEX_TASK_MODEL,
+	CODEX_TASK_REASONING_EFFORT,
+	CodexAppServerClient,
 	DEFAULT_TOOL_TIMEOUT_MS,
-	MAX_OUTPUT_BYTES,
 	resolveCodexCommand,
 } from "./codex";
 import { CODEX_MCP_TOOLS } from "./tools";
 
-describe("codex MCP scaffold", () => {
-	it("exposes the semantic Codex tool set", () => {
-		expect(CODEX_MCP_TOOLS.map((tool) => tool.name)).toEqual([
-			"codex_task",
-			"codex_check",
-			"codex_chrome_read",
-		]);
+const fakeAppServerPath = fileURLToPath(new URL("./fixtures/fake-app-server.ts", import.meta.url));
+const clients: CodexAppServerClient[] = [];
+
+const createFakeClient = async (scenario = "success"): Promise<CodexAppServerClient> => {
+	const client = new CodexAppServerClient({
+		command: {
+			args: [fakeAppServerPath, scenario],
+			command: process.execPath,
+		},
+		stderr: process.stderr,
 	});
 
-	it("prefers mise for Codex CLI resolution", () => {
+	await client.start();
+	clients.push(client);
+
+	return client;
+};
+
+afterEach(async () => {
+	await Promise.all(clients.splice(0).map((client) => client.close()));
+});
+
+describe("codex MCP tool set", () => {
+	it("exposes direct-result Codex tools", () => {
+		expect(CODEX_MCP_TOOLS.map((tool) => tool.name)).toEqual(["codex_task", "codex_chrome_read"]);
+	});
+
+	it("prefers mise and pins the bunx fallback package", () => {
 		expect(resolveCodexCommand(true).slice(0, 4)).toEqual(["mise", "x", "codex@latest", "--"]);
-		expect(resolveCodexCommand(false)[0]).toBe("bunx");
+		expect(resolveCodexCommand(false)).toEqual(["bunx", "codex@latest"]);
+	});
+
+	it("documents fixed model defaults in code", () => {
+		expect(CODEX_TASK_MODEL).toBe("gpt-5.5");
+		expect(CODEX_TASK_REASONING_EFFORT).toBe("medium");
+		expect(CODEX_CHROME_READ_MODEL).toBe("gpt-5.5");
+		expect(CODEX_CHROME_READ_REASONING_EFFORT).toBe("low");
 	});
 });
 
-describe("chrome read policy", () => {
+describe("prompt policies", () => {
+	it("creates a short read-only Codex task prompt", () => {
+		const prompt = createReadOnlyTaskPrompt("Summarize this repository");
+
+		expect(prompt).toContain("read-only MCP tool");
+		expect(prompt).toContain("Summarize this repository");
+	});
+
 	it("creates a read-only @Chrome prompt", () => {
 		const prompt = createChromeReadPrompt("Click the notification and summarize the details");
 
@@ -37,97 +77,104 @@ describe("chrome read policy", () => {
 		expect(prompt).toContain("raw HTML");
 	});
 
-	it("converts arbitrary browser read requests into Codex task input", () => {
+	it("converts arbitrary browser read requests into Codex run input", () => {
 		const input = createChromeReadTaskInput({
-			model: "gpt-5.4-mini",
 			request: "Click the notification and summarize the details",
 		});
 
-		expect(input.model).toBe("gpt-5.4-mini");
 		expect(input.prompt).toContain("Click the notification and summarize the details");
+		expect(input.toolKind).toBe("chrome_read");
 	});
 });
 
-describe("buildCodexExecArgs", () => {
-	it("builds a bounded JSON Codex exec command", () => {
-		expect(buildCodexExecArgs({ prompt: "hi" })).toEqual([
-			"exec",
-			"--json",
-			"--skip-git-repo-check",
-			"hi",
+describe("CodexAppServerClient successful runs", () => {
+	it("runs a turn and returns a normalized final result", async () => {
+		const client = await createFakeClient();
+		const result = await client.run({
+			prompt: "hi",
+			toolKind: "task",
+		});
+
+		expect(result).toMatchObject({
+			finalText: "Hello from fake app-server",
+			ok: true,
+			status: "completed",
+			threadId: "thread-1",
+			turnId: "turn-1",
+		});
+		expect(result.items).toEqual([
+			{
+				id: "item-1",
+				text: "Hello from fake app-server",
+				type: "agent_message",
+			},
 		]);
 	});
+});
 
-	it("passes an explicit model when provided", () => {
-		expect(buildCodexExecArgs({ model: "gpt-5.4-mini", prompt: "hi" })).toContain("gpt-5.4-mini");
+describe("CodexAppServerClient failed runs", () => {
+	it("returns a structured failed result for app-server turn errors", async () => {
+		const client = await createFakeClient("turn-failed");
+		const result = await client.run({
+			prompt: "hi",
+			toolKind: "task",
+		});
+
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("failed");
+		expect(result.warnings).toContain("fake turn failed");
+	});
+
+	it("interrupts app-server turns on timeout", async () => {
+		const client = await createFakeClient("timeout-never-completes");
+		const result = await client.run({
+			prompt: "hi",
+			timeoutMs: 1,
+			toolKind: "task",
+		});
+
+		expect(result.ok).toBe(false);
+		expect(result.status).toBe("timed_out");
+	});
+
+	it("uses accumulated deltas when no completed agent message arrives", async () => {
+		const client = await createFakeClient("delta-completed-no-item");
+		const result = await client.run({
+			prompt: "hi",
+			toolKind: "task",
+		});
+
+		expect(result.ok).toBe(true);
+		expect(result.status).toBe("completed");
+		expect(result.finalText).toBe("partial");
+		expect(result.warnings).toContain(
+			"Used accumulated agent message deltas because no completed agent message was received.",
+		);
 	});
 });
 
-describe("createExecaOptions", () => {
-	it("closes stdin for non-interactive Codex exec runs", () => {
-		expect(
-			createExecaOptions({
-				prompt: "hi",
-				taskId: "task-1",
-				timeoutMs: 1_000,
-			}),
-		).toMatchObject({
-			maxBuffer: MAX_OUTPUT_BYTES,
-			reject: false,
-			stdin: "ignore",
-			timeout: 1_000,
+describe("CodexAppServerClient process lifecycle", () => {
+	it("fails hard if the owned app-server exits", async () => {
+		const client = new CodexAppServerClient({
+			command: {
+				args: [fakeAppServerPath, "exit-after-init"],
+				command: process.execPath,
+			},
 		});
+
+		await client.start();
+		clients.push(client);
+		await sleep(10);
+		const result = await client.run({
+			prompt: "hi",
+			toolKind: "task",
+		});
+
+		expect(result.ok).toBe(false);
+		expect(result.error).toContain("Codex app-server exited unexpectedly");
 	});
 
-	it("allows large Codex JSON event streams from browser tasks", () => {
-		expect(MAX_OUTPUT_BYTES).toBeGreaterThanOrEqual(8 * 1024 * 1024);
-	});
-
-	it("passes cwd through when provided", () => {
-		expect(
-			createExecaOptions({
-				cwd: "/tmp/mikoto",
-				prompt: "hi",
-				taskId: "task-1",
-				timeoutMs: 1_000,
-			}),
-		).toMatchObject({
-			cwd: "/tmp/mikoto",
-			stdin: "ignore",
-		});
-	});
-});
-
-describe("CodexTaskManager", () => {
-	it("starts tasks asynchronously and exposes completion through checks", async () => {
-		const manager = new CodexTaskManager({
-			runner: () =>
-				Promise.resolve({
-					exitCode: 0,
-					stderr: "",
-					stdout: '{"msg":"hi"}',
-					timedOut: false,
-				}),
-		});
-		const started = manager.startTask({ prompt: "hi" });
-
-		expect(started.status).toBe("running");
-		expect(started.timeoutMs).toBe(DEFAULT_TOOL_TIMEOUT_MS);
-
-		await Promise.resolve();
-
-		const checked = manager.checkTask(started.taskId);
-
-		expect(checked.status).toBe("completed");
-		expect(checked.stdout).toBe('{"msg":"hi"}');
-	});
-
-	it("reports unknown task IDs without throwing", () => {
-		const manager = new CodexTaskManager();
-
-		expect(manager.checkTask("missing")).toEqual({
-			status: "not_found",
-			taskId: "missing",
-		});
+	it("uses a five minute timeout by default", () => {
+		expect(DEFAULT_TOOL_TIMEOUT_MS).toBe(300_000);
 	});
 });

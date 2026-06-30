@@ -35,7 +35,7 @@ flowchart TD
   Worker --> DO[Durable Object bridge/session coordinator]
   Bridge[mikoto bridge] -->|outbound WebSocket| DO
   Bridge --> CodexMCP[mikoto-codex-mcp]
-  CodexMCP --> Codex[codex exec]
+  CodexMCP --> Codex[codex app-server]
   Codex --> Chrome[official @Chrome]
   Bridge --> OtherMCP[other configured local MCP servers]
 ```
