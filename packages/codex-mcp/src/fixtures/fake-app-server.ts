@@ -80,21 +80,7 @@ const emitTurnFailure = (threadId: string): void => {
 	});
 };
 
-const emitTurnSuccess = (threadId: string): void => {
-	emitAgentDelta(threadId, "Hello");
-	write({
-		method: "item/completed",
-		params: {
-			item: {
-				id: "item-1",
-				phase: null,
-				text: "Hello from fake app-server",
-				type: "agentMessage",
-			},
-			threadId,
-			turnId: "turn-1",
-		},
-	});
+const emitTurnCompleted = (threadId: string): void => {
 	write({
 		method: "turn/completed",
 		params: {
@@ -113,22 +99,47 @@ const emitTurnSuccess = (threadId: string): void => {
 	});
 };
 
+const emitTurnSuccess = (threadId: string): void => {
+	emitAgentDelta(threadId, "Hello");
+	write({
+		method: "item/completed",
+		params: {
+			item: {
+				id: "item-1",
+				phase: null,
+				text: "Hello from fake app-server",
+				type: "agentMessage",
+			},
+			threadId,
+			turnId: "turn-1",
+		},
+	});
+	emitTurnCompleted(threadId);
+};
+
+const emitDeltaOnlyTurnSuccess = (threadId: string): void => {
+	emitAgentDelta(threadId, "partial");
+	emitTurnCompleted(threadId);
+};
+
+type TurnScenarioHandler = (threadId: string) => void;
+
+const emitTimeoutTurn = (threadId: string): void => {
+	emitAgentDelta(threadId, "partial");
+};
+
+const turnScenarioHandlers: Record<string, TurnScenarioHandler> = {
+	"delta-completed-no-item": emitDeltaOnlyTurnSuccess,
+	"timeout-never-completes": emitTimeoutTurn,
+	"turn-failed": emitTurnFailure,
+};
+
 const handleTurnStart = (request: FakeRequest & { id: number | string }): void => {
 	const threadId = request.params?.threadId ?? "thread-1";
+	const scenarioHandler = turnScenarioHandlers[scenario] ?? emitTurnSuccess;
 
 	emitTurnStartedResponse(request.id);
-
-	if (scenario === "turn-failed") {
-		emitTurnFailure(threadId);
-		return;
-	}
-
-	if (scenario === "timeout-never-completes") {
-		emitAgentDelta(threadId, "partial");
-		return;
-	}
-
-	emitTurnSuccess(threadId);
+	scenarioHandler(threadId);
 };
 
 const handleRequest = (request: FakeRequest): void => {

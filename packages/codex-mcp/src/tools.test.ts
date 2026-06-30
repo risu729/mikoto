@@ -135,6 +135,17 @@ describe("CodexAppServerClient failed runs", () => {
 
 		expect(result.ok).toBe(false);
 		expect(result.status).toBe("timed_out");
+	});
+
+	it("uses accumulated deltas when no completed agent message arrives", async () => {
+		const client = await createFakeClient("delta-completed-no-item");
+		const result = await client.run({
+			prompt: "hi",
+			toolKind: "task",
+		});
+
+		expect(result.ok).toBe(true);
+		expect(result.status).toBe("completed");
 		expect(result.finalText).toBe("partial");
 		expect(result.warnings).toContain(
 			"Used accumulated agent message deltas because no completed agent message was received.",
