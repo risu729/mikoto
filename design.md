@@ -301,32 +301,32 @@ Do not hardcode OS-specific behavior.
 `mikoto-codex-mcp` is a standalone local MCP server. Do not bundle it into the
 bridge process.
 
-For the MVP, `mikoto-codex-mcp` launches and owns bounded
-`codex exec --json` subprocesses. Codex app-server backed execution is a future
-improvement tracked in issue #28.
+For the MVP, `mikoto-codex-mcp` launches and owns one local
+`codex app-server --listen stdio://` child process.
 
 Codex CLI resolution:
 
 - Prefer `mise x codex@latest -- codex ...`.
-- Fall back to `bunx` only when `mise` is unavailable.
+- Fall back to `bunx codex@latest` only when `mise` is unavailable.
 - Do not silently choose unrelated global installs before trying the configured
   resolver.
 
 `mikoto-codex-mcp` responsibilities:
 
 - launch Codex CLI through the configured resolver
-- run bounded `codex exec --json` tasks
-- capture task stdout, stderr, exit status, and timeout state
-- map task status into MCP-compatible polling through `codex_check`
+- start Codex app-server eagerly and fail startup if it cannot initialize
+- create a fresh Codex thread for each MCP tool call
+- run bounded app-server turns and return one final normalized result
+- use `turn/interrupt` on timeout
 - provide safe task templates for Codex tasks
 - provide the general-purpose read-only browser read tool
-- enforce backend-specific read-only policy
+- enforce restrictive app-server defaults: read-only sandbox and `never`
+  approval policy
 - avoid exposing raw Codex internals as public MCP tools
 
 Expected semantic tools:
 
 - `codex_task`
-- `codex_check`
 - `codex_chrome_read`
 
 `codex_chrome_read` is general-purpose and read-only. It should accept arbitrary
@@ -337,9 +337,8 @@ counts, and visible labels; a request to inspect notifications may return
 visible notification items. The tool should never return raw page internals, raw
 HTML, raw DOM dumps, screenshots, cookies, storage, tokens, or broad page dumps.
 
-On timeout, terminate the owned Codex subprocess. Future app-server support
-should make a best-effort attempt to interrupt the active Codex turn if
-supported.
+On timeout, interrupt the active Codex turn. Automatic app-server restart and
+persistent Codex threads across MCP tool calls are future improvements.
 
 ## Safety And Policy
 
@@ -452,7 +451,7 @@ Testing split:
 - Use local relay test configuration so bridge tests can target a local
   Worker-runtime relay.
 - Avoid real Codex app-server, real browser, and real Cloudflare Access in
-  initial automated tests.
+  automated tests. Use a fake app-server protocol fixture for codex-mcp tests.
 
 Do not use Bun's built-in test runner.
 

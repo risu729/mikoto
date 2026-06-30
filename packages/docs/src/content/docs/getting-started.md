@@ -29,7 +29,8 @@ cp mikoto.example.toml mikoto.toml
 
 The example config connects the bridge to `ws://localhost:8787/bridge`, starts
 `@mikoto/codex-mcp` as a stdio backend, exposes backend-prefixed tools such as
-`codex.codex_check`, and adds the `local_chrome_read` alias.
+`codex.codex_task` and `codex.codex_chrome_read`, and adds the
+`local_chrome_read` alias.
 
 ## First Local Run
 

@@ -1,8 +1,7 @@
-import type { CodexTaskInput } from "./codex";
+import type { CodexRunInput } from "./codex";
 
 type CodexChromeReadInput = {
 	cwd?: string;
-	model?: string;
 	request: string;
 	timeoutMs?: number;
 };
@@ -24,14 +23,11 @@ Rules:
 `.trim();
 
 const applyChromeReadOptions = (
-	taskInput: CodexTaskInput,
+	taskInput: CodexRunInput,
 	input: CodexChromeReadInput,
-): CodexTaskInput => {
+): CodexRunInput => {
 	if (input.cwd) {
 		taskInput.cwd = input.cwd;
-	}
-	if (input.model) {
-		taskInput.model = input.model;
 	}
 	if (input.timeoutMs) {
 		taskInput.timeoutMs = input.timeoutMs;
@@ -40,13 +36,22 @@ const applyChromeReadOptions = (
 	return taskInput;
 };
 
-const createChromeReadTaskInput = (input: CodexChromeReadInput): CodexTaskInput =>
+const createReadOnlyTaskPrompt = (prompt: string): string =>
+	`
+You are running through a read-only MCP tool. Avoid writes, lasting changes, and destructive actions.
+
+Task:
+${prompt}
+`.trim();
+
+const createChromeReadTaskInput = (input: CodexChromeReadInput): CodexRunInput =>
 	applyChromeReadOptions(
 		{
 			prompt: createChromeReadPrompt(input.request),
+			toolKind: "chrome_read",
 		},
 		input,
 	);
 
-export { createChromeReadPrompt, createChromeReadTaskInput };
+export { createChromeReadPrompt, createChromeReadTaskInput, createReadOnlyTaskPrompt };
 export type { CodexChromeReadInput };

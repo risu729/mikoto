@@ -17,7 +17,7 @@ mise run relay:dev
 
 The local bridge WebSocket endpoint is `ws://localhost:8787/bridge`. The MCP
 endpoint is `/mcp`; it exposes `mikoto_list_bridges` plus tools announced by
-connected bridges, such as `codex.codex_check`.
+connected bridges, such as `codex.codex_chrome_read`.
 
 Inspect tools locally:
 

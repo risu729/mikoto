@@ -64,6 +64,10 @@ run = "bun packages/bridge/src/index.ts"
 description = "Run the Codex MCP scaffold."
 run = "bun packages/codex-mcp/src/index.ts"
 
+[tasks."codex:generate-app-server-types"]
+description = "Generate reference Codex app-server TypeScript protocol files."
+run = "mise x codex@0.142.4 -- codex app-server generate-ts --out .generated/codex-app-server"
+
 [tasks."compile:codex-mcp-app"]
 description = "Compile Codex MCP app binaries."
 depends = [

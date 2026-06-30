@@ -2,6 +2,7 @@ node_modules/
 dist/
 .astro/
 .wrangler/
+.generated/
 .dev.vars
 *.log
 *.tsbuildinfo

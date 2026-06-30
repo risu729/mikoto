@@ -35,7 +35,7 @@ describe("createBridgeHelloMessage", () => {
 				relay: { url: "ws://localhost:8787/bridge" },
 				servers: [],
 			},
-			[{ inputSchema: { properties: {}, type: "object" }, name: "codex.codex_check" }],
+			[{ inputSchema: { properties: {}, type: "object" }, name: "codex.codex_task" }],
 		);
 
 		expect(message).toMatchObject({
@@ -43,9 +43,9 @@ describe("createBridgeHelloMessage", () => {
 				id: "dev-machine",
 				os: "linux",
 				status: "connected",
-				tools: ["codex.codex_check"],
+				tools: ["codex.codex_task"],
 			},
-			tools: [{ name: "codex.codex_check" }],
+			tools: [{ name: "codex.codex_task" }],
 			type: "bridge.hello",
 		});
 		expect(Date.parse(message.bridge.lastHeartbeat)).not.toBeNaN();
