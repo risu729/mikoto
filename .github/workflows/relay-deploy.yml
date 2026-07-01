@@ -1,0 +1,32 @@
+name: Relay Deploy
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-production
+  cancel-in-progress: false
+permissions: {}
+defaults:
+  run:
+    shell: bash
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Deploy relay
+        uses: ./.github/actions/relay-deploy
+        with:
+          dry-run: "false"
+          cloudflare-account-id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          cloudflare-api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}

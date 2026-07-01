@@ -11,3 +11,11 @@ run = "wrangler dev"
 [tasks.deploy]
 description = "Deploy the relay Worker with Wrangler."
 run = "wrangler deploy"
+
+[tasks."deploy:production"]
+description = "Deploy the relay Worker production environment with Wrangler."
+run = "wrangler deploy --env production"
+
+[tasks."deploy:production:dry-run"]
+description = "Validate the relay Worker production deployment with Wrangler."
+run = "wrangler deploy --env production --dry-run"

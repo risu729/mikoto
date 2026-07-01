@@ -30,3 +30,25 @@ curl -s http://localhost:8787/mcp \
 ```
 
 See the root README for the full relay + bridge local development flow.
+
+## Deployment
+
+The production relay is deployed by GitHub Actions with Wrangler through mise.
+The production environment in `wrangler.jsonc` routes
+`mcp.mikoto.takuk.me` to the relay Worker and applies the relay Durable Object
+binding and migrations.
+
+Validate the production deploy config without deploying:
+
+```sh
+mise //packages/relay:deploy:production:dry-run
+```
+
+Deploy to production:
+
+```sh
+mise //packages/relay:deploy:production
+```
+
+Use GitHub Actions for production deployments. Local Wrangler deploy commands
+are intended only for explicit operator checks.
