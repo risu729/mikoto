@@ -37,13 +37,13 @@ The example config connects the bridge to `ws://localhost:8787/bridge`, starts
 Run the local relay in one shell:
 
 ```sh
-mise run relay:dev
+mise //packages/relay:dev
 ```
 
 Run the bridge in another shell:
 
 ```sh
-mise run bridge
+mise //packages/bridge:run
 ```
 
 Then inspect connected bridges through the local MCP endpoint:

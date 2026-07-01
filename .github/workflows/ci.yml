@@ -73,7 +73,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
       - name: Relay tests
-        run: mise run test:relay
+        run: mise //packages/relay:test
   docs-deploy:
     name: Docs Deploy
     runs-on: ubuntu-24.04
@@ -116,7 +116,7 @@ jobs:
           mkdir -p "${output_dir}"
           export WRANGLER_OUTPUT_FILE_DIRECTORY="${output_dir}"
 
-          mise run docs:upload-preview -- --preview-alias "${PREVIEW_ALIAS}"
+          mise //packages/docs:upload-preview -- --preview-alias "${PREVIEW_ALIAS}"
 
           shopt -s nullglob
           files=("${output_dir}"/wrangler-output-*.json)
@@ -157,7 +157,7 @@ jobs:
           mkdir -p "${output_dir}"
           export WRANGLER_OUTPUT_FILE_DIRECTORY="${output_dir}"
 
-          mise run docs:deploy
+          mise //packages/docs:deploy
 
           shopt -s nullglob
           files=("${output_dir}"/wrangler-output-*.json)

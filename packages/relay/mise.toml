@@ -1,0 +1,13 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+
+[tasks.test]
+description = "Run Cloudflare Worker relay tests."
+run = "bunx vitest run"
+
+[tasks.dev]
+description = "Run the relay Worker locally with Wrangler."
+run = "wrangler dev"
+
+[tasks.deploy]
+description = "Deploy the relay Worker with Wrangler."
+run = "wrangler deploy"

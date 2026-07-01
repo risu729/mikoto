@@ -6,7 +6,7 @@ title: Local Development
 Run the local relay in one shell:
 
 ```sh
-mise run relay:dev
+mise //packages/relay:dev
 ```
 
 Wrangler serves the local Worker at `http://localhost:8787`. The ChatGPT-facing
@@ -16,7 +16,7 @@ is `ws://localhost:8787/bridge`.
 Run the bridge in another shell:
 
 ```sh
-mise run bridge
+mise //packages/bridge:run
 ```
 
 The bridge loads `mikoto.toml`, starts configured stdio backend MCP servers
@@ -55,7 +55,7 @@ mise run test
 For Cloudflare Worker relay tests, use the relay test task:
 
 ```sh
-mise run test:relay
+mise //packages/relay:test
 ```
 
 Project commands are exposed as mise tasks. Avoid browser and Codex

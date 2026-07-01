@@ -1,0 +1,17 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+
+[tasks.run]
+description = "Run the local bridge scaffold."
+run = "bun src/index.ts"
+
+[tasks.compile]
+description = "Compile local bridge binaries."
+depends = [":compile:linux-x64", ":compile:windows-x64"]
+
+[tasks."compile:linux-x64"]
+description = "Compile the local bridge for Linux x64."
+run = "bun build --compile --target=bun-linux-x64 --outfile=../../dist/mikoto-bridge-linux-x64 src/index.ts"
+
+[tasks."compile:windows-x64"]
+description = "Compile the local bridge for Windows x64."
+run = "bun build --compile --target=bun-windows-x64 --outfile=../../dist/mikoto-bridge-windows-x64.exe src/index.ts"

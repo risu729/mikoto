@@ -67,7 +67,7 @@ cp mikoto.example.toml mikoto.toml
 Run the local relay in one shell:
 
 ```sh
-mise run relay:dev
+mise //packages/relay:dev
 ```
 
 Wrangler serves the local Worker at `http://localhost:8787`. The ChatGPT-facing
@@ -77,7 +77,7 @@ is `ws://localhost:8787/bridge`.
 Run the bridge in another shell:
 
 ```sh
-mise run bridge
+mise //packages/bridge:run
 ```
 
 Inspect connected bridges through the local MCP endpoint:
@@ -103,7 +103,7 @@ curl -s http://localhost:8787/mcp \
 Run the Starlight docs site locally:
 
 ```sh
-mise run docs:dev
+mise //packages/docs:dev
 ```
 
 The docs source lives in `packages/docs`.
@@ -115,6 +115,6 @@ Project commands are exposed as mise tasks:
 ```sh
 mise run check --lint
 mise run test
-mise run test:relay
-mise run docs:build
+mise //packages/relay:test
+mise //packages/docs:build
 ```

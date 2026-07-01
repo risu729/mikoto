@@ -1,6 +1,15 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
 min_version = "2026.6.13"
+monorepo_root = true
+
+[monorepo]
+config_roots = [
+	"packages/bridge",
+	"packages/codex-mcp",
+	"packages/docs",
+	"packages/relay",
+]
 
 [tools]
 bun = "1.3.14"
@@ -40,10 +49,6 @@ run = "bun install --frozen-lockfile"
 description = "Run repository Vitest tests."
 run = "bunx vitest run"
 
-[tasks."test:relay"]
-description = "Run Cloudflare Worker relay tests."
-run = "cd packages/relay && bunx vitest run"
-
 [tasks.typecheck]
 description = "Typecheck the workspace."
 run = "bunx tsc -p tsconfig.json"
@@ -56,80 +61,6 @@ flag "--lint" help="Run hk check instead of fix"
 run = "hk {% if usage.lint %}check{% else %}fix{% endif %} --all --no-progress --no-fail-fast"
 env.GH_TOKEN = "{% if env.GITHUB_TOKEN is defined %}{{ env.GITHUB_TOKEN }}{% endif %}"
 
-[tasks.bridge]
-description = "Run the local bridge scaffold."
-run = "bun packages/bridge/src/index.ts"
-
-[tasks."codex-mcp"]
-description = "Run the Codex MCP scaffold."
-run = "bun packages/codex-mcp/src/index.ts"
-
-[tasks."codex:generate-app-server-types"]
-description = "Generate reference Codex app-server TypeScript protocol files."
-run = "mise x codex@0.142.4 -- codex app-server generate-ts --out .generated/codex-app-server"
-
-[tasks."compile:codex-mcp-app"]
-description = "Compile Codex MCP app binaries."
-depends = [
-	"compile:codex-mcp-app:linux-x64",
-	"compile:codex-mcp-app:windows-x64"
-]
-
-[tasks."compile:codex-mcp-app:linux-x64"]
-description = "Compile the Codex MCP app for Linux x64."
-run = "bun build --compile --target=bun-linux-x64 --outfile=dist/codex-mcp-app-linux-x64 packages/codex-mcp/src/index.ts"
-
-[tasks."compile:codex-mcp-app:windows-x64"]
-description = "Compile the Codex MCP app for Windows x64."
-run = "bun build --compile --target=bun-windows-x64 --outfile=dist/codex-mcp-app-windows-x64.exe packages/codex-mcp/src/index.ts"
-
-[tasks."compile:bridge"]
-description = "Compile local bridge binaries."
-depends = ["compile:bridge:linux-x64", "compile:bridge:windows-x64"]
-
-[tasks."compile:bridge:linux-x64"]
-description = "Compile the local bridge for Linux x64."
-run = "bun build --compile --target=bun-linux-x64 --outfile=dist/mikoto-bridge-linux-x64 packages/bridge/src/index.ts"
-
-[tasks."compile:bridge:windows-x64"]
-description = "Compile the local bridge for Windows x64."
-run = "bun build --compile --target=bun-windows-x64 --outfile=dist/mikoto-bridge-windows-x64.exe packages/bridge/src/index.ts"
-
 [tasks.compile]
 description = "Compile all local binaries."
-depends = ["compile:codex-mcp-app", "compile:bridge"]
-
-[tasks."relay:dev"]
-description = "Run the relay Worker locally with Wrangler."
-run = "cd packages/relay && wrangler dev"
-
-[tasks."relay:deploy"]
-description = "Deploy the relay Worker with Wrangler."
-run = "cd packages/relay && wrangler deploy"
-
-[tasks."docs:dev"]
-description = "Run the Starlight docs site locally."
-run = "cd packages/docs && bunx astro dev"
-
-[tasks."docs:install-browser"]
-description = "Install the Playwright browser used for build-time Mermaid rendering."
-run = "cd packages/docs && bunx playwright install chromium"
-
-[tasks."docs:build"]
-description = "Build the Starlight docs site."
-depends = ["docs:install-browser"]
-run = "cd packages/docs && bunx astro build"
-
-[tasks."docs:preview"]
-description = "Preview the built Starlight docs site."
-run = "cd packages/docs && bunx astro preview"
-
-[tasks."docs:upload-preview"]
-description = "Build and upload a docs Worker preview version with Wrangler."
-depends = ["docs:build"]
-run = "cd packages/docs && wrangler versions upload"
-
-[tasks."docs:deploy"]
-description = "Build and deploy the docs Worker with Wrangler."
-depends = ["docs:build"]
-run = "cd packages/docs && wrangler deploy"
+depends = ["//packages/codex-mcp:compile", "//packages/bridge:compile"]

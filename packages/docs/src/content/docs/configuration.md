@@ -41,6 +41,6 @@ becomes `codex.codex_chrome_read`.
 You can override local config without editing `mikoto.toml`:
 
 ```sh
-MIKOTO_RELAY_URL=ws://localhost:8787/bridge mise run bridge
-MIKOTO_BRIDGE_ID=my-dev-machine mise run bridge
+MIKOTO_RELAY_URL=ws://localhost:8787/bridge mise //packages/bridge:run
+MIKOTO_BRIDGE_ID=my-dev-machine mise //packages/bridge:run
 ```
