@@ -15,7 +15,7 @@ config_roots = [
 bun = "1.3.14"
 node = "26.3.1"
 wrangler = "4.105.0"
-"npm:typescript" = "6.0.3"
+"npm:typescript" = "7.0.1-rc"
 hk = "1.48.0"
 oxlint = "1.70.0"
 oxfmt = "0.55.0"
@@ -51,7 +51,7 @@ run = "bunx vitest run"
 
 [tasks.typecheck]
 description = "Typecheck the workspace."
-run = "bunx tsc -p tsconfig.json"
+run = "tsc -p tsconfig.json"
 
 [tasks.check]
 description = "Run hk linters and formatters."
