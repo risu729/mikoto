@@ -49,10 +49,6 @@ run = "bun install --frozen-lockfile"
 description = "Run repository Vitest tests."
 run = "bunx vitest run"
 
-[tasks.typecheck]
-description = "Typecheck the workspace."
-run = "tsc -p tsconfig.json"
-
 [tasks.check]
 description = "Run hk linters and formatters."
 usage = '''
@@ -63,4 +59,9 @@ env.GH_TOKEN = "{% if env.GITHUB_TOKEN is defined %}{{ env.GITHUB_TOKEN }}{% end
 
 [tasks.compile]
 description = "Compile all local binaries."
-depends = ["//packages/codex-mcp:compile", "//packages/bridge:compile"]
+run = [
+	"mise //packages/codex-mcp:compile --target linux-x64",
+	"mise //packages/codex-mcp:compile --target windows-x64",
+	"mise //packages/bridge:compile --target linux-x64",
+	"mise //packages/bridge:compile --target windows-x64",
+]

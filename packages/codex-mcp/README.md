@@ -59,8 +59,9 @@ mise //packages/codex-mcp:generate-app-server-types
 ```
 
 The generated files are written to `.generated/codex-app-server` and are not
-committed. The checked-in app-server protocol types are a small hand-written
-subset derived from `codex app-server generate-ts` using
+committed. The generation task resolves `codex@latest`. The checked-in
+app-server protocol types are a small hand-written subset derived from
+`codex app-server generate-ts` using
 `@openai/codex@0.142.4`.
 
 ## Compile
@@ -68,7 +69,8 @@ subset derived from `codex app-server generate-ts` using
 From the repository root:
 
 ```sh
-mise //packages/codex-mcp:compile
+mise //packages/codex-mcp:compile --target linux-x64
+mise //packages/codex-mcp:compile --target windows-x64
 ```
 
 This creates single-file Bun executables in `dist/`:

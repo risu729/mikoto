@@ -24,7 +24,8 @@ a deployed relay.
 From the repository root:
 
 ```sh
-mise //packages/bridge:compile
+mise //packages/bridge:compile --target linux-x64
+mise //packages/bridge:compile --target windows-x64
 ```
 
 This creates single-file Bun executables in `dist/`:
