@@ -1,0 +1,24 @@
+{
+	"$schema": "../../node_modules/wrangler/config-schema.json",
+	"name": "mikoto-relay",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-06-25",
+	"upload_source_maps": true,
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "RELAY_DO",
+				"class_name": "RelayDurableObject",
+			},
+		],
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": ["RelayDurableObject"],
+		},
+	],
+	"observability": {
+		"enabled": true,
+	},
+}
