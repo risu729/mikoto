@@ -1,10 +1,20 @@
 ---
 description: What mikoto is and who it is for.
+hero:
+  title: mikoto
+  tagline: An early-stage local MCP gateway for using ChatGPT with explicitly configured local MCP servers through a Cloudflare relay.
+  actions:
+    - text: Get Started
+      link: /getting-started/
+    - text: View Architecture
+      link: /architecture/
+      variant: secondary
+  image:
+    alt: Diagram showing ChatGPT connecting to mikoto relay, local bridge, and configured local MCPs.
+    file: ../../assets/hero-diagram.png
+template: splash
 title: Overview
 ---
-
-`mikoto` is an early-stage local MCP gateway for using ChatGPT with explicitly
-configured local MCP servers through a Cloudflare relay.
 
 The MVP goal is a general-purpose, read-only Codex browser read tool. ChatGPT
 should be able to ask for structured information from an allowed local browser
