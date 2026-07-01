@@ -1,4 +1,4 @@
 {
 	"extends": "@risu729/tsconfigs/bundler",
-	"exclude": ["dist", "node_modules"]
+	"exclude": ["dist"]
 }
