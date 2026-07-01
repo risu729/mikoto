@@ -21,6 +21,10 @@ the docs Worker and routes production traffic through `mikoto.takuk.me`. The
 production `workers.dev` route is disabled; preview URLs remain enabled for pull
 request review.
 
+The production docs deployment fails when the required Cloudflare GitHub Actions
+configuration is missing. Pull request preview uploads from forks do not require
+repository secrets.
+
 The docs Worker and relay Worker configs enable Wrangler source-map uploads and
 Cloudflare Workers observability.
 

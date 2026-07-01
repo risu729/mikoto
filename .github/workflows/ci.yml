@@ -104,6 +104,11 @@ jobs:
           else
             echo "available=false" >> "${GITHUB_OUTPUT}"
           fi
+      - name: Require Cloudflare config for docs production deploy
+        if: github.repository == 'risu729/mikoto' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cloudflare-token.outputs.available != 'true'
+        run: |
+          echo "CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required for docs production deployment." >&2
+          exit 1
       - name: Upload docs preview
         if: github.repository == 'risu729/mikoto' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.cloudflare-token.outputs.available == 'true'
         env:
