@@ -24,7 +24,7 @@ export default defineConfig({
 	],
 	markdown: {
 		processor: unified({
-			rehypePlugins: [rehypeMermaid],
+			rehypePlugins: [[rehypeMermaid, { dark: true, strategy: "img-svg" }]],
 		}),
 	},
 });
