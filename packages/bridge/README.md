@@ -12,7 +12,7 @@ From the repository root:
 
 ```sh
 cp mikoto.example.toml mikoto.toml
-mise run bridge
+mise //packages/bridge:run
 ```
 
 The default local relay URL in `mikoto.example.toml` is
@@ -24,7 +24,7 @@ a deployed relay.
 From the repository root:
 
 ```sh
-mise run compile:bridge
+mise //packages/bridge:compile
 ```
 
 This creates single-file Bun executables in `dist/`:

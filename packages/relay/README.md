@@ -12,7 +12,7 @@ names.
 Run the relay locally with Wrangler:
 
 ```sh
-mise run relay:dev
+mise //packages/relay:dev
 ```
 
 The local bridge WebSocket endpoint is `ws://localhost:8787/bridge`. The MCP

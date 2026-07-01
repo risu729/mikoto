@@ -45,7 +45,7 @@ Tool responses are JSON text content with this shape:
 From the repository root:
 
 ```sh
-mise run codex-mcp
+mise //packages/codex-mcp:run
 ```
 
 The server uses stdio, so MCP clients should start it as a local command. At
@@ -55,7 +55,7 @@ available, and falls back to `bunx codex@latest`.
 To regenerate the local reference copy of the Codex app-server protocol:
 
 ```sh
-mise run codex:generate-app-server-types
+mise //packages/codex-mcp:generate-app-server-types
 ```
 
 The generated files are written to `.generated/codex-app-server` and are not
@@ -68,7 +68,7 @@ subset derived from `codex app-server generate-ts` using
 From the repository root:
 
 ```sh
-mise run compile:codex-mcp-app
+mise //packages/codex-mcp:compile
 ```
 
 This creates single-file Bun executables in `dist/`:

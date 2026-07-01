@@ -7,7 +7,7 @@ Starlight documentation site for mikoto.
 From the repository root:
 
 ```sh
-mise run docs:dev
+mise //packages/docs:dev
 ```
 
 ## Build
@@ -15,5 +15,5 @@ mise run docs:dev
 From the repository root:
 
 ```sh
-mise run docs:build
+mise //packages/docs:build
 ```

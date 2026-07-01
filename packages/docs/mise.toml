@@ -1,0 +1,28 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+
+[tasks.dev]
+description = "Run the Starlight docs site locally."
+run = "bunx astro dev"
+
+[tasks."install-browser"]
+description = "Install the Playwright browser used for build-time Mermaid rendering."
+run = "bunx playwright install chromium"
+
+[tasks.build]
+description = "Build the Starlight docs site."
+depends = [":install-browser"]
+run = "bunx astro build"
+
+[tasks.preview]
+description = "Preview the built Starlight docs site."
+run = "bunx astro preview"
+
+[tasks."upload-preview"]
+description = "Build and upload a docs Worker preview version with Wrangler."
+depends = [":build"]
+run = "wrangler versions upload"
+
+[tasks.deploy]
+description = "Build and deploy the docs Worker with Wrangler."
+depends = [":build"]
+run = "wrangler deploy"

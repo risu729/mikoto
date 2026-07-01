@@ -1,0 +1,21 @@
+#:schema https://mise.jdx.dev/schema/mise.json
+
+[tasks.run]
+description = "Run the Codex MCP scaffold."
+run = "bun src/index.ts"
+
+[tasks."generate-app-server-types"]
+description = "Generate reference Codex app-server TypeScript protocol files."
+run = "mise x codex@0.142.4 -- codex app-server generate-ts --out ../../.generated/codex-app-server"
+
+[tasks.compile]
+description = "Compile Codex MCP app binaries."
+depends = [":compile:linux-x64", ":compile:windows-x64"]
+
+[tasks."compile:linux-x64"]
+description = "Compile the Codex MCP app for Linux x64."
+run = "bun build --compile --target=bun-linux-x64 --outfile=../../dist/codex-mcp-app-linux-x64 src/index.ts"
+
+[tasks."compile:windows-x64"]
+description = "Compile the Codex MCP app for Windows x64."
+run = "bun build --compile --target=bun-windows-x64 --outfile=../../dist/codex-mcp-app-windows-x64.exe src/index.ts"
