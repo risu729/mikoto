@@ -184,6 +184,24 @@ jobs:
               echo "| _Unavailable_ |"
             fi
           } >> "${GITHUB_STEP_SUMMARY}"
+  relay-deploy-dry-run:
+    name: Relay Deploy Dry Run
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Dry-run relay deploy
+        uses: ./.github/actions/relay-deploy
+        with:
+          dry-run: "true"
+          cloudflare-account-id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          cloudflare-api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   ci-check:
     name: CI Check
     needs:
@@ -191,6 +209,7 @@ jobs:
       - test
       - relay-test
       - docs-deploy
+      - relay-deploy-dry-run
     if: always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
     runs-on: ubuntu-24.04
     timeout-minutes: 5

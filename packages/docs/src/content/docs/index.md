@@ -25,7 +25,8 @@ tokens, or raw Codex internals.
 ## Status
 
 The repository has an early local development path for the relay, bridge, and
-Codex MCP server. The public deployment path is still incomplete.
+Codex MCP server. The docs and relay production deployment paths are managed by
+GitHub Actions.
 
 ## Intended Users
 

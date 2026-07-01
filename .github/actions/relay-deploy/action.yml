@@ -1,0 +1,36 @@
+name: Relay Deploy
+description: Install tools and deploy the relay Worker with Wrangler.
+inputs:
+  dry-run:
+    description: Run Wrangler production deploy as a dry run.
+    required: true
+  cloudflare-account-id:
+    description: Cloudflare account ID.
+    required: true
+  cloudflare-api-token:
+    description: Cloudflare API token.
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Install mise
+      uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      with:
+        version: 2026.6.13
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        MISE_ENABLE_TOOLS: bun,node,wrangler
+    - name: Dry-run relay deploy
+      if: inputs.dry-run == 'true'
+      env:
+        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare-account-id }}
+        CLOUDFLARE_API_TOKEN: ${{ inputs.cloudflare-api-token }}
+      shell: bash
+      run: mise //packages/relay:deploy:production:dry-run
+    - name: Deploy relay
+      if: inputs.dry-run != 'true'
+      env:
+        CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare-account-id }}
+        CLOUDFLARE_API_TOKEN: ${{ inputs.cloudflare-api-token }}
+      shell: bash
+      run: mise //packages/relay:deploy:production

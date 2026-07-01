@@ -21,4 +21,34 @@
 	"observability": {
 		"enabled": true,
 	},
+	"env": {
+		"production": {
+			"name": "mikoto-relay",
+			"workers_dev": false,
+			"routes": [
+				{
+					"pattern": "mcp.mikoto.takuk.me",
+					"custom_domain": true,
+				},
+			],
+			"upload_source_maps": true,
+			"durable_objects": {
+				"bindings": [
+					{
+						"name": "RELAY_DO",
+						"class_name": "RelayDurableObject",
+					},
+				],
+			},
+			"migrations": [
+				{
+					"tag": "v1",
+					"new_sqlite_classes": ["RelayDurableObject"],
+				},
+			],
+			"observability": {
+				"enabled": true,
+			},
+		},
+	},
 }
