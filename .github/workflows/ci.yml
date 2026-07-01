@@ -92,6 +92,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           MISE_ENABLE_TOOLS: bun,node,wrangler
+      - name: Store dependency versions
+        id: dependency-versions
+        run: |
+          playwright_version="$(bun pm ls | sed -nE 's/.*playwright@(.+)/\1/p' | head -n 1)"
+          echo "playwright=${playwright_version}" >> "${GITHUB_OUTPUT}"
+      - name: Cache Playwright Chromium
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.dependency-versions.outputs.playwright }}
+          restore-keys: |
+            playwright-chromium-${{ runner.os }}-
       - name: Check Cloudflare token
         id: cloudflare-token
         if: github.repository == 'risu729/mikoto' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
