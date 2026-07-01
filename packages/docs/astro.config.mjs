@@ -6,6 +6,7 @@ import rehypeMermaid from "rehype-mermaid";
 export default defineConfig({
 	integrations: [
 		starlight({
+			customCss: ["./src/styles/custom.css"],
 			sidebar: [
 				{
 					items: [
