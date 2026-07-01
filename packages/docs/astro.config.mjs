@@ -1,5 +1,7 @@
+import { unified } from "@astrojs/markdown-remark";
 import starlight from "@astrojs/starlight";
 import { defineConfig } from "astro/config";
+import rehypeMermaid from "rehype-mermaid";
 
 export default defineConfig({
 	integrations: [
@@ -20,4 +22,9 @@ export default defineConfig({
 			title: "mikoto",
 		}),
 	],
+	markdown: {
+		processor: unified({
+			rehypePlugins: [[rehypeMermaid, { dark: true, strategy: "img-svg" }]],
+		}),
+	},
 });
