@@ -16,10 +16,13 @@ mise, not the Wrangler GitHub Action. Preview upload is part of the CI Check
 gate, and the preview URL is written to the GitHub Actions step summary.
 
 Pushes to `main` run production deployment with `wrangler deploy`, also through
-mise. Wrangler uses `packages/docs/wrangler.toml` as the source of truth for the
-docs Worker and routes production traffic through `mikoto.takuk.me`. The
+mise. Wrangler uses `packages/docs/wrangler.jsonc` as the source of truth for
+the docs Worker and routes production traffic through `mikoto.takuk.me`. The
 production `workers.dev` route is disabled; preview URLs remain enabled for pull
 request review.
+
+The docs Worker and relay Worker configs enable Wrangler source-map uploads and
+Cloudflare Workers observability.
 
 Required GitHub Actions variables:
 
