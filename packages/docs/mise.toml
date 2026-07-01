@@ -15,6 +15,7 @@ run = "bunx astro build"
 
 [tasks.preview]
 description = "Preview the built Starlight docs site."
+depends = [":build"]
 run = "bunx astro preview"
 
 [tasks."upload-preview"]

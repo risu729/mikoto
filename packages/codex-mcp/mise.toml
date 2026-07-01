@@ -6,16 +6,28 @@ run = "bun src/index.ts"
 
 [tasks."generate-app-server-types"]
 description = "Generate reference Codex app-server TypeScript protocol files."
-run = "mise x codex@0.142.4 -- codex app-server generate-ts --out ../../.generated/codex-app-server"
+run = "mise x codex@latest -- codex app-server generate-ts --out ../../.generated/codex-app-server"
 
 [tasks.compile]
-description = "Compile Codex MCP app binaries."
-depends = [":compile:linux-x64", ":compile:windows-x64"]
+description = "Compile the Codex MCP app for a target platform."
+usage = '''
+flag "--target <target>" help="Target platform: linux-x64 or windows-x64"
+'''
+run = '''
+case "{{ usage.target }}" in
+  linux-x64)
+    bun_target="bun-linux-x64"
+    outfile="../../dist/codex-mcp-app-linux-x64"
+    ;;
+  windows-x64)
+    bun_target="bun-windows-x64"
+    outfile="../../dist/codex-mcp-app-windows-x64.exe"
+    ;;
+  *)
+    echo "Unsupported target: {{ usage.target }}. Use linux-x64 or windows-x64." >&2
+    exit 2
+    ;;
+esac
 
-[tasks."compile:linux-x64"]
-description = "Compile the Codex MCP app for Linux x64."
-run = "bun build --compile --target=bun-linux-x64 --outfile=../../dist/codex-mcp-app-linux-x64 src/index.ts"
-
-[tasks."compile:windows-x64"]
-description = "Compile the Codex MCP app for Windows x64."
-run = "bun build --compile --target=bun-windows-x64 --outfile=../../dist/codex-mcp-app-windows-x64.exe src/index.ts"
+bun build --compile --target="${bun_target}" --outfile="${outfile}" src/index.ts
+'''
