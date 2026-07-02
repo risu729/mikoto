@@ -18,7 +18,6 @@ runs:
       with:
         version: 2026.6.13
       env:
-        GITHUB_TOKEN: ${{ github.token }}
         MISE_ENABLE_TOOLS: bun,node,wrangler
     - name: Dry-run relay deploy
       if: inputs.dry-run == 'true'

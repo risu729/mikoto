@@ -55,7 +55,6 @@ usage = '''
 flag "--lint" help="Run hk check instead of fix"
 '''
 run = "hk {% if usage.lint %}check{% else %}fix{% endif %} --all --no-progress --no-fail-fast"
-env.GH_TOKEN = "{% if env.GITHUB_TOKEN is defined %}{{ env.GITHUB_TOKEN }}{% endif %}"
 
 [tasks.compile]
 description = "Compile all local binaries."
