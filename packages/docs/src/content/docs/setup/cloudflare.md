@@ -36,16 +36,55 @@ production entrypoint.
 Create Cloudflare Access protection for the relay hostname before using a
 deployed relay for real traffic.
 
-Required Access coverage:
+The relay needs two different Access protections because the ChatGPT-facing MCP
+endpoint and the local bridge endpoint have different callers.
 
-- `mcp.mikoto.takuk.me/mcp*`: Cloudflare Access self-hosted application with
-  Managed OAuth enabled for the ChatGPT-facing Streamable HTTP MCP endpoint.
-- `mcp.mikoto.takuk.me/bridge*`: separate Cloudflare Access policy restricted
-  to intended local computers through Cloudflare One Client/WARP.
-- `mcp.mikoto.takuk.me/health*`: same WARP-only policy as the bridge endpoint.
+### MCP Endpoint
 
-The hostname itself is DNS-public when the Worker route exists. The intended
-security boundary is Cloudflare Access on the protected paths.
+Create a Cloudflare Access MCP server application for the ChatGPT-facing
+Streamable HTTP endpoint.
+
+- Cloudflare service: **Zero Trust Access AI controls MCP servers**.
+- HTTP URL: `https://mcp.mikoto.takuk.me/mcp`.
+- Authentication: enable **Managed OAuth** for the MCP server application.
+- Access policy: allow only the Cloudflare Access users or groups that may add
+  the MCP server to ChatGPT.
+
+Use the MCP URL, not only the hostname. Cloudflare's MCP server Access
+application flow expects the HTTP URL to include the MCP path.
+
+### Bridge And Health Endpoints
+
+Create a separate Cloudflare Access self-hosted application for the local bridge
+WebSocket endpoint and health check.
+
+- Cloudflare service: **Zero Trust Access Applications**.
+- Public hostname: `mcp.mikoto.takuk.me`.
+- Protected paths:
+  - `/bridge*`
+  - `/health*`
+- Access policy: allow only intended local operators and require the local
+  computer to be connected through **Cloudflare One Client** in WARP mode.
+- Managed OAuth: leave disabled for this application. The bridge is not an MCP
+  OAuth client.
+
+Keep `/bridge*` separate from `/mcp*`. ChatGPT should authenticate to `/mcp`
+through Access Managed OAuth, while bridge connections should be limited to
+trusted local computers.
+
+The hostname itself is DNS-public when the Worker route exists. Until both
+Access applications and policies exist, treat deployed relay paths as
+internet-reachable.
+
+### Official References
+
+- [Secure MCP servers with Cloudflare Access][cloudflare-mcp-access]
+- [Managed OAuth for self-hosted applications][cloudflare-managed-oauth]
+- [Access policies][cloudflare-access-policies]
+
+[cloudflare-access-policies]: https://developers.cloudflare.com/cloudflare-one/access-controls/policies/
+[cloudflare-managed-oauth]: https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/managed-oauth/
+[cloudflare-mcp-access]: https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/secure-mcp-servers/
 
 ## GitHub Actions Inputs
 
