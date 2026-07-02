@@ -6,10 +6,10 @@ inputs:
     required: true
   cloudflare-account-id:
     description: Cloudflare account ID.
-    required: true
+    required: false
   cloudflare-api-token:
     description: Cloudflare API token.
-    required: true
+    required: false
 runs:
   using: composite
   steps:
@@ -20,14 +20,24 @@ runs:
       env:
         MISE_ENABLE_TOOLS: bun,node,wrangler
     - name: Dry-run relay deploy
+      id: dry-run
       if: inputs.dry-run == 'true'
+      shell: bash
+      run: mise //packages/relay:deploy:production -- --dry-run
+    - name: Require Cloudflare credentials
+      id: cloudflare-credentials
+      if: steps.dry-run.outcome == 'skipped'
       env:
         CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare-account-id }}
         CLOUDFLARE_API_TOKEN: ${{ inputs.cloudflare-api-token }}
       shell: bash
-      run: mise //packages/relay:deploy:production:dry-run
+      run: |
+        if [[ -z "${CLOUDFLARE_ACCOUNT_ID}" || -z "${CLOUDFLARE_API_TOKEN}" ]]; then
+          echo "CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required for relay deployment." >&2
+          exit 1
+        fi
     - name: Deploy relay
-      if: inputs.dry-run != 'true'
+      if: steps.cloudflare-credentials.outcome == 'success'
       env:
         CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare-account-id }}
         CLOUDFLARE_API_TOKEN: ${{ inputs.cloudflare-api-token }}

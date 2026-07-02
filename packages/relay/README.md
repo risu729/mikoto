@@ -41,7 +41,7 @@ binding and migrations.
 Validate the production deploy config without deploying:
 
 ```sh
-mise //packages/relay:deploy:production:dry-run
+mise //packages/relay:deploy:production -- --dry-run
 ```
 
 Deploy to production:
