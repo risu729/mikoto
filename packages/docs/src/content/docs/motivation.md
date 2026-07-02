@@ -19,17 +19,19 @@ The motivating use cases are practical:
   authenticated sessions are easier to manage locally.
 - Reach configured local MCP servers from one ChatGPT-facing endpoint.
 
-## Not An Oracle
+## Different From Oracle
 
-`mikoto` is not trying to be an
-[oracle](https://en.wikipedia.org/wiki/Oracle) that answers from nowhere or
-asks users to trust an opaque remote source.
+[`oracle`](https://github.com/steipete/oracle) solves a useful opposite
+workflow: from Codex or another local agent, bundle a prompt and files so a
+stronger external model such as ChatGPT Pro can review or answer with context.
+It can use APIs, browser automation, a Codex skill, and MCP integration for
+that consultation flow.
 
-It is closer to the opposite: a controlled relay to explicitly configured local
-tools, browser sessions, commands, and MCP servers. The relay should expose
-bounded tool results and safe metadata, not raw local state. The operator
-chooses which local backends exist, which tools are exposed, and which
-Cloudflare Access policies protect the remote entrypoints.
+`mikoto` is for the other direction. It lets ChatGPT reach explicitly configured
+local tools, browser sessions, commands, and MCP servers through a controlled
+relay. The relay should expose bounded tool results and safe metadata, not raw
+local state. The operator chooses which local backends exist, which tools are
+exposed, and which Cloudflare Access policies protect the remote entrypoints.
 
 ## Design Direction
 
