@@ -6,7 +6,8 @@ run = "bun src/index.ts"
 
 [tasks."generate-app-server-types"]
 description = "Generate reference Codex app-server TypeScript protocol files."
-run = "mise x codex@latest -- codex app-server generate-ts --out ../../.generated/codex-app-server"
+tools = { codex = "latest" }
+run = "codex app-server generate-ts --out ../../.generated/codex-app-server"
 
 [tasks.compile]
 description = "Compile the Codex MCP app for a target platform."
