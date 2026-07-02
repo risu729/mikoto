@@ -1,29 +1,34 @@
 :root {
-	--sl-color-accent-low: #eef0ff;
-	--sl-color-accent: #6c78d6;
-	--sl-color-accent-high: #2f356f;
-	--sl-color-white: #fbfbff;
-	--sl-color-gray-1: #f4f5ff;
-	--sl-color-gray-2: #e6e9fb;
-	--sl-color-gray-3: #c8ceef;
-	--sl-color-gray-4: #929ac5;
-	--sl-color-gray-5: #596080;
-	--sl-color-gray-6: #303548;
-	--sl-color-black: #11131d;
+	--sl-color-accent-low: #f0f2ff;
+	--sl-color-accent: #6470dc;
+	--sl-color-accent-high: #252d72;
+	--sl-color-white: #ffffff;
+	--sl-color-gray-1: #f8f9ff;
+	--sl-color-gray-2: #eef1ff;
+	--sl-color-gray-3: #d9def8;
+	--sl-color-gray-4: #a7afd9;
+	--sl-color-gray-5: #5f668d;
+	--sl-color-gray-6: #303650;
+	--sl-color-black: #151827;
 }
 
 :root[data-theme="dark"] {
-	--sl-color-accent-low: #202544;
-	--sl-color-accent: #aab4f5;
-	--sl-color-accent-high: #e6e9ff;
-	--sl-color-white: #f7f8ff;
-	--sl-color-gray-1: #ecefff;
-	--sl-color-gray-2: #cdd3f3;
-	--sl-color-gray-3: #9da6d6;
-	--sl-color-gray-4: #656d9c;
-	--sl-color-gray-5: #363d5c;
-	--sl-color-gray-6: #202538;
-	--sl-color-black: #0d101a;
+	--sl-color-accent-low: #343b70;
+	--sl-color-accent: #b6bfff;
+	--sl-color-accent-high: #f1f3ff;
+	--sl-color-white: #ffffff;
+	--sl-color-gray-1: #f5f6ff;
+	--sl-color-gray-2: #dde2ff;
+	--sl-color-gray-3: #b8c0ee;
+	--sl-color-gray-4: #838dbf;
+	--sl-color-gray-5: #59638e;
+	--sl-color-gray-6: #30375c;
+	--sl-color-black: #20243a;
+	--sl-color-bg: #20243a;
+	--sl-color-bg-nav: #2a3153;
+	--sl-color-bg-sidebar: #2a3153;
+	--sl-color-hairline: #3a426c;
+	--sl-color-hairline-light: #4b5480;
 }
 
 body {
@@ -32,6 +37,23 @@ body {
 
 .site-title {
 	color: var(--sl-color-accent-high);
+}
+
+:root[data-theme="dark"] .site-title {
+	color: var(--sl-color-white);
+}
+
+.sl-markdown-content img[id^="mermaid-"] {
+	display: block;
+	box-sizing: border-box;
+	max-width: 100%;
+	height: auto;
+	margin-block: 1.75rem;
+	padding: 1.25rem;
+	border: 1px solid var(--sl-color-gray-3);
+	border-radius: 0.5rem;
+	background: #ffffff;
+	box-shadow: 0 0.5rem 1.5rem rgb(21 24 39 / 8%);
 }
 
 html[data-has-hero] .hero {

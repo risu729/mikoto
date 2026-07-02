@@ -38,12 +38,12 @@ export default defineConfig({
 					label: "Operations",
 				},
 			],
-			title: "mikoto",
+			title: "Mikoto",
 		}),
 	],
 	markdown: {
 		processor: unified({
-			rehypePlugins: [[rehypeMermaid, { dark: true, strategy: "img-svg" }]],
+			rehypePlugins: [[rehypeMermaid, { dark: false, strategy: "img-svg" }]],
 		}),
 	},
 });
