@@ -6,14 +6,18 @@
 - Keep changes small and focused.
 - Prefer modern, well-maintained libraries when they provide a clearer or more
   reliable abstraction than low-level Node.js APIs.
-- Use `README.md` for the public project overview.
-- Use `packages/docs` for durable user-facing documentation.
-- Use `design.md` for temporary detailed design notes. Remove `design.md` after
-  the implementation makes the design concrete in code and README docs.
+- Use `README.md` for the public project overview and root local development
+  commands.
+- Use package `README.md` files for package-specific local development commands.
+- Use `packages/docs` for durable non-development documentation, including
+  motivation, architecture, Cloudflare setup, component behavior, deployment,
+  security, and limitations.
+- Do not reintroduce `design.md`. Keep design decisions concrete in code,
+  README files, docs pages, issues, or PR descriptions.
 
 ## Architecture
 
-- `mikoto` uses TypeScript on Bun.
+- Mikoto uses TypeScript on Bun.
 - Use the official MCP TypeScript SDK where practical.
 - Use Vitest for tests. For Cloudflare Worker tests, use
   `@cloudflare/vitest-pool-workers`.
@@ -22,8 +26,8 @@
   SSE support.
 - The local bridge connects outbound to the relay over WebSocket and does not
   expose an HTTP server for the MVP.
-- Keep `mikoto bridge`, backend MCP servers, and `mikoto-codex-mcp` as separate
-  programs.
+- Keep the Mikoto bridge, backend MCP servers, and `mikoto-codex-mcp` as
+  separate programs.
 - Keep Codex app-server logic in `mikoto-codex-mcp`, not in the bridge.
 - Do not expose raw Codex app-server JSON-RPC through the bridge.
 - Only configured local MCP servers are in scope. Do not auto-discover arbitrary
@@ -53,9 +57,10 @@
 - Protect the ChatGPT-facing relay endpoint with Cloudflare Access Managed
   OAuth.
 - Protect the local bridge WebSocket endpoint with a separate Cloudflare Access
-  policy that trusts intended local computers through Cloudflare WARP.
-- Deploy the relay through GitHub Actions using `cloudflare/wrangler-action` or
-  a raw `wrangler` command with a Cloudflare API token.
+  policy that trusts intended local computers through Cloudflare One
+  Client/WARP.
+- Deploy the relay through GitHub Actions using raw `wrangler` commands with a
+  Cloudflare API token.
 - Do not use Cloudflare Workers Builds for this repository.
 
 ## Commit Messages

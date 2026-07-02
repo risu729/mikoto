@@ -1,16 +1,16 @@
 ---
-description: What mikoto is and who it is for.
+description: What Mikoto is and who it is for.
 hero:
-  title: mikoto
+  title: Mikoto
   tagline: An early-stage local MCP gateway for using ChatGPT with explicitly configured local MCP servers through a Cloudflare relay.
   actions:
-    - text: Get Started
-      link: /getting-started/
-    - text: View Architecture
-      link: /architecture/
+    - text: Why Mikoto
+      link: /motivation/
+    - text: Cloudflare Setup
+      link: /setup/cloudflare/
       variant: secondary
   image:
-    alt: Diagram showing ChatGPT connecting to mikoto relay, local bridge, and configured local MCPs.
+    alt: Diagram showing ChatGPT connecting to Mikoto relay, local bridge, and configured local MCPs.
     file: ../../assets/hero-diagram.png
 template: splash
 title: Overview
@@ -36,15 +36,13 @@ GitHub Actions.
 - Power users who run multiple local MCP servers and want one ChatGPT-facing
   entrypoint.
 
-## Safety Model
+## Where To Go Next
 
-The browser-read tool is general-purpose but read-only.
+- Read [Motivation](/motivation/) for the product framing.
+- Read [Architecture](/architecture/) for the relay, bridge, and backend split.
+- Read [Cloudflare Setup](/setup/cloudflare/) for deployed relay prerequisites.
+- Read [Security](/operations/security/) for the Access and browser-read
+  boundaries.
 
-Browser read tools must not:
-
-- Click, type, submit, navigate destructively, or mutate state.
-- Inspect cookies, tokens, local storage, session storage, or other secrets.
-- Return raw HTML, raw DOM dumps, screenshots, storage contents, or broad page
-  dumps.
-
-Tools should return structured, task-oriented data for the request.
+Local development commands live in the repository and package `README.md`
+files. These docs focus on durable product, setup, and operations guidance.

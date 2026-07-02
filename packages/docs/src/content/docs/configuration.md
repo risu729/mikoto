@@ -38,9 +38,6 @@ Configured backend MCP servers are exposed by default. Tool names are prefixed
 with the backend id, so backend tool `codex_chrome_read` from server `codex`
 becomes `codex.codex_chrome_read`.
 
-You can override local config without editing `mikoto.toml`:
-
-```sh
-MIKOTO_RELAY_URL=ws://localhost:8787/bridge mise //packages/bridge:run
-MIKOTO_BRIDGE_ID=my-dev-machine mise //packages/bridge:run
-```
+`MIKOTO_RELAY_URL` and `MIKOTO_BRIDGE_ID` override the matching config fields
+without editing `mikoto.toml`. Local run commands live in the package README
+files.
