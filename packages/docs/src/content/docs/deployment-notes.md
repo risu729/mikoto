@@ -27,9 +27,12 @@ Production hosting decisions:
   route in `packages/relay/wrangler.jsonc` before retrying the deploy.
 
 Pull requests from the main repository upload a Cloudflare Workers preview
-version with `wrangler versions upload`. The workflow uses Wrangler installed by
-mise, not the Wrangler GitHub Action. Preview upload is part of the CI Check
-gate, and the preview URL is written to the GitHub Actions step summary.
+version with `wrangler versions upload`. Pull requests that do not upload a
+credentialed preview, including pull requests from forks, run a tokenless docs
+Worker deployment dry run with `wrangler deploy --dry-run` instead. The workflow
+uses Wrangler installed by mise, not the Wrangler GitHub Action. Preview upload
+and dry run checks are part of the CI Check gate, and the preview URL is written
+to the GitHub Actions step summary when available.
 
 Pushes to `main` run production deployment with `wrangler deploy`, also through
 mise. Wrangler uses `packages/docs/wrangler.jsonc` as the source of truth for
@@ -38,12 +41,12 @@ production `workers.dev` route is disabled; preview URLs remain enabled for pull
 request review.
 
 The production docs deployment fails when the required Cloudflare GitHub Actions
-configuration is missing. Pull request preview uploads from forks do not require
-repository secrets.
+configuration is missing. Pull request dry runs from forks do not require
+repository secrets, and fork pull requests skip the credentialed preview upload.
 
-Pull requests from the main repository also run a production relay deployment
-dry run with `wrangler deploy --env production --dry-run`. Fork pull requests
-skip the relay dry run because repository secrets are unavailable.
+Pull requests run a tokenless production relay deployment dry run with
+`wrangler deploy --env production --dry-run`, including pull requests from
+forks.
 
 Pushes to `main` trigger the separate Relay Deploy workflow, which deploys the
 production relay Worker with `wrangler deploy --env production` through the
