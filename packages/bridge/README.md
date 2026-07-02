@@ -2,15 +2,11 @@
 
 Local bridge process.
 
-The bridge loads `mikoto.toml`, starts configured stdio backend MCP servers,
-discovers their tools, and connects outbound to the relay over WebSocket. HTTP
-backends are still rejected as unimplemented.
-
-## Run
+## Local Development
 
 From the repository root:
 
-```sh
+```console
 cp mikoto.example.toml mikoto.toml
 mise //packages/bridge:run
 ```
@@ -18,17 +14,3 @@ mise //packages/bridge:run
 The default local relay URL in `mikoto.example.toml` is
 `ws://localhost:8787/bridge`. Override it with `MIKOTO_RELAY_URL` when targeting
 a deployed relay.
-
-## Compile
-
-From the repository root:
-
-```sh
-mise //packages/bridge:compile --target linux-x64
-mise //packages/bridge:compile --target windows-x64
-```
-
-This creates single-file Bun executables in `dist/`:
-
-- `mikoto-bridge-linux-x64`
-- `mikoto-bridge-windows-x64.exe`

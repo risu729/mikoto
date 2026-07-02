@@ -3,17 +3,8 @@
 Mikoto is an early-stage local MCP gateway for using ChatGPT with explicitly
 configured local MCP servers through a Cloudflare relay.
 
-The MVP goal is a general-purpose, read-only Codex browser read tool. ChatGPT
-should be able to ask for structured information from an allowed local browser
-context through bounded Codex CLI tasks and the official `@Chrome` integration,
-without direct browser control, raw HTML/DOM access, cookies, storage, tokens,
-or raw Codex internals.
-
-## Status
-
-This repository has an early local development path for the relay, bridge, and
-Codex MCP server. The docs and relay production deployment paths are managed by
-GitHub Actions.
+For motivation, architecture, Cloudflare setup, component behavior, deployment,
+security, and limitations, use the documentation site in `packages/docs`.
 
 ## Packages
 
@@ -23,103 +14,38 @@ GitHub Actions.
 - `packages/protocol`: shared schemas and protocol types.
 - `packages/docs`: Starlight documentation site.
 
-## Architecture
+## Local Development
 
-The ChatGPT-facing MCP endpoint uses Streamable HTTP. The bridge connects
-outbound to the relay over WebSocket. Configured local MCP servers sit behind
-the bridge.
+Install configured tools and project dependencies:
 
-```mermaid
-flowchart TD
-  ChatGPT[ChatGPT App] -->|MCP over HTTP| Access[Cloudflare Access OAuth]
-  Access --> Worker[Cloudflare Worker relay]
-  Worker --> DO[Durable Object bridge/session coordinator]
-  Bridge[Mikoto bridge] -->|outbound WebSocket| DO
-  Bridge --> CodexMCP[Mikoto Codex MCP]
-  CodexMCP --> Codex[codex app-server]
-  Codex --> Chrome[official @Chrome]
-  Bridge --> OtherMCP[other configured local MCP servers]
-```
-
-## Quick Start
-
-Local prerequisites:
-
-- Bun
-- mise
-- Wrangler, provided through mise
-- Codex CLI available through `mise x codex@latest -- codex ...` for Codex
-  backend tasks
-
-Install dependencies:
-
-```sh
-mise trust
+```console
 mise install
-bun install --frozen-lockfile
+mise deps
 ```
 
-Create a local config:
+Create local config, then run the relay and bridge in separate shells:
 
-```sh
+```console
 cp mikoto.example.toml mikoto.toml
-```
-
-Run the local relay in one shell:
-
-```sh
 mise //packages/relay:dev
 ```
 
-Wrangler serves the local Worker at `http://localhost:8787`. The ChatGPT-facing
-MCP endpoint is `http://localhost:8787/mcp`, and the bridge WebSocket endpoint
-is `ws://localhost:8787/bridge`.
-
-Run the bridge in another shell:
-
-```sh
+```console
 mise //packages/bridge:run
 ```
 
-Inspect connected bridges through the local MCP endpoint:
+The local relay uses `http://localhost:8787/mcp` for MCP requests and
+`ws://localhost:8787/bridge` for bridge WebSocket connections.
 
-```sh
-curl -s http://localhost:8787/mcp \
-  -H 'content-type: application/json' \
-  -H 'accept: application/json, text/event-stream' \
-  -H 'mcp-protocol-version: 2025-06-18' \
-  --data '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tools/call",
-    "params": {
-      "name": "mikoto_list_bridges",
-      "arguments": {}
-    }
-  }'
-```
+Run the docs site locally:
 
-## Documentation
-
-Run the Starlight docs site locally:
-
-```sh
+```console
 mise //packages/docs:dev
 ```
 
-The docs source lives in `packages/docs`.
-
-Use the documentation site for non-development guides such as motivation,
-architecture, Cloudflare setup, component behavior, deployment, and security.
-Keep local development commands in this README and the package README files.
-
 ## Testing
 
-Project commands are exposed as mise tasks:
-
-```sh
+```console
 mise run check --lint
 mise run test
-mise //packages/relay:test
-mise //packages/docs:build
 ```
