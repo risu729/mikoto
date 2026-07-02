@@ -50,3 +50,11 @@ sequenceDiagram
 The relay returns only safe metadata: bridge id, bridge OS, status, last
 heartbeat time, and exposed tool names. It must not return secrets, local paths,
 environment variables, raw backend config, raw tool arguments, or tool results.
+
+## Component Details
+
+- [Relay](/parts/relay/) owns remote MCP routing and Durable Object session
+  coordination.
+- [Bridge](/parts/bridge/) owns local backend startup, discovery, and routing.
+- [Codex MCP](/parts/codex-mcp/) owns Codex app-server execution and
+  backend-specific read-only browser policy.

@@ -11,13 +11,31 @@ export default defineConfig({
 				{
 					items: [
 						{ label: "Overview", slug: "" },
-						{ label: "Getting Started", slug: "getting-started" },
+						{ label: "Motivation", slug: "motivation" },
 						{ label: "Architecture", slug: "architecture" },
 						{ label: "Configuration", slug: "configuration" },
-						{ label: "Local Development", slug: "local-development" },
-						{ label: "Deployment Notes", slug: "deployment-notes" },
 					],
 					label: "Guides",
+				},
+				{
+					items: [{ label: "Cloudflare", slug: "setup/cloudflare" }],
+					label: "Setup",
+				},
+				{
+					items: [
+						{ label: "Relay", slug: "parts/relay" },
+						{ label: "Bridge", slug: "parts/bridge" },
+						{ label: "Codex MCP", slug: "parts/codex-mcp" },
+					],
+					label: "Parts",
+				},
+				{
+					items: [
+						{ label: "Deployment", slug: "operations/deployment" },
+						{ label: "Security", slug: "operations/security" },
+						{ label: "Limitations", slug: "operations/limitations" },
+					],
+					label: "Operations",
 				},
 			],
 			title: "mikoto",

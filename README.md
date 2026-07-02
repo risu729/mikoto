@@ -109,6 +109,10 @@ mise //packages/docs:dev
 
 The docs source lives in `packages/docs`.
 
+Use the documentation site for non-development guides such as motivation,
+architecture, Cloudflare setup, component behavior, deployment, and security.
+Keep local development commands in this README and the package README files.
+
 ## Testing
 
 Project commands are exposed as mise tasks:
