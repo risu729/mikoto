@@ -6,7 +6,7 @@ Starlight documentation site for Mikoto.
 
 From the repository root:
 
-```sh
+```console
 mise //packages/docs:dev
 ```
 
@@ -14,6 +14,6 @@ mise //packages/docs:dev
 
 From the repository root:
 
-```sh
+```console
 mise //packages/docs:build
 ```
