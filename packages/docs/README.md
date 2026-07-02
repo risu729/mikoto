@@ -1,6 +1,6 @@
 # @mikoto/docs
 
-Starlight documentation site for mikoto.
+Starlight documentation site for Mikoto.
 
 ## Run
 

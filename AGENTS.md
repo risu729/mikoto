@@ -17,7 +17,7 @@
 
 ## Architecture
 
-- `mikoto` uses TypeScript on Bun.
+- Mikoto uses TypeScript on Bun.
 - Use the official MCP TypeScript SDK where practical.
 - Use Vitest for tests. For Cloudflare Worker tests, use
   `@cloudflare/vitest-pool-workers`.
@@ -26,8 +26,8 @@
   SSE support.
 - The local bridge connects outbound to the relay over WebSocket and does not
   expose an HTTP server for the MVP.
-- Keep `mikoto bridge`, backend MCP servers, and `mikoto-codex-mcp` as separate
-  programs.
+- Keep the Mikoto bridge, backend MCP servers, and `mikoto-codex-mcp` as
+  separate programs.
 - Keep Codex app-server logic in `mikoto-codex-mcp`, not in the bridge.
 - Do not expose raw Codex app-server JSON-RPC through the bridge.
 - Only configured local MCP servers are in scope. Do not auto-discover arbitrary

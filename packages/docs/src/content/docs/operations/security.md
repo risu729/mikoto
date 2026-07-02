@@ -3,7 +3,7 @@ description: Security boundaries and safety assumptions.
 title: Security
 ---
 
-`mikoto` is designed around explicit configuration and defense in depth. The
+Mikoto is designed around explicit configuration and defense in depth. The
 relay exposes only bounded MCP tools. The bridge routes only to configured local
 backends. Backend MCP servers enforce backend-specific safety rules.
 

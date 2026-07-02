@@ -1,5 +1,5 @@
 ---
-description: Cloudflare services and settings needed for a deployed mikoto relay.
+description: Cloudflare services and settings needed for a deployed Mikoto relay.
 title: Cloudflare Setup
 ---
 
@@ -8,7 +8,7 @@ commands live in the root and package `README.md` files.
 
 ## Services
 
-`mikoto` uses these Cloudflare services:
+Mikoto uses these Cloudflare services:
 
 - **Workers** for the relay Worker.
 - **Durable Objects** for bridge/session coordination.

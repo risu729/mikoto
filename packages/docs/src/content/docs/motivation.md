@@ -1,9 +1,9 @@
 ---
-description: Why mikoto exists and what problem it is meant to solve.
+description: Why Mikoto exists and what problem it is meant to solve.
 title: Motivation
 ---
 
-`mikoto` exists to connect ChatGPT to explicit local capabilities without
+Mikoto exists to connect ChatGPT to explicit local capabilities without
 turning those capabilities into a broad remote control surface.
 
 The motivating use cases are practical:
@@ -27,7 +27,7 @@ stronger external model such as ChatGPT Pro can review or answer with context.
 It can use APIs, browser automation, a Codex skill, and MCP integration for
 that consultation flow.
 
-`mikoto` is for the other direction. It lets ChatGPT reach explicitly configured
+Mikoto is for the other direction. It lets ChatGPT reach explicitly configured
 local tools, browser sessions, commands, and MCP servers through a controlled
 relay. The relay should expose bounded tool results and safe metadata, not raw
 local state. The operator chooses which local backends exist, which tools are

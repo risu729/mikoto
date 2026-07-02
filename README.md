@@ -1,6 +1,6 @@
-# mikoto
+# Mikoto
 
-`mikoto` is an early-stage local MCP gateway for using ChatGPT with explicitly
+Mikoto is an early-stage local MCP gateway for using ChatGPT with explicitly
 configured local MCP servers through a Cloudflare relay.
 
 The MVP goal is a general-purpose, read-only Codex browser read tool. ChatGPT
@@ -34,8 +34,8 @@ flowchart TD
   ChatGPT[ChatGPT App] -->|MCP over HTTP| Access[Cloudflare Access OAuth]
   Access --> Worker[Cloudflare Worker relay]
   Worker --> DO[Durable Object bridge/session coordinator]
-  Bridge[mikoto bridge] -->|outbound WebSocket| DO
-  Bridge --> CodexMCP[mikoto-codex-mcp]
+  Bridge[Mikoto bridge] -->|outbound WebSocket| DO
+  Bridge --> CodexMCP[Mikoto Codex MCP]
   CodexMCP --> Codex[codex app-server]
   Codex --> Chrome[official @Chrome]
   Bridge --> OtherMCP[other configured local MCP servers]

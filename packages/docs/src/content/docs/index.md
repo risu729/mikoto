@@ -1,16 +1,16 @@
 ---
-description: What mikoto is and who it is for.
+description: What Mikoto is and who it is for.
 hero:
-  title: mikoto
+  title: Mikoto
   tagline: An early-stage local MCP gateway for using ChatGPT with explicitly configured local MCP servers through a Cloudflare relay.
   actions:
-    - text: Why mikoto
+    - text: Why Mikoto
       link: /motivation/
     - text: Cloudflare Setup
       link: /setup/cloudflare/
       variant: secondary
   image:
-    alt: Diagram showing ChatGPT connecting to mikoto relay, local bridge, and configured local MCPs.
+    alt: Diagram showing ChatGPT connecting to Mikoto relay, local bridge, and configured local MCPs.
     file: ../../assets/hero-diagram.png
 template: splash
 title: Overview
