@@ -45,10 +45,16 @@ Create a Cloudflare Access MCP server application for the ChatGPT-facing
 Streamable HTTP endpoint.
 
 - Cloudflare service: **Zero Trust Access AI controls MCP servers**.
+- Access application name: `mikoto mcp`.
+- MCP server ID: `mikoto`.
 - HTTP URL: `https://mcp.mikoto.takuk.me/mcp`.
 - Authentication: enable **Managed OAuth** for the MCP server application.
 - Access policy: allow only the Cloudflare Access users or groups that may add
-  the MCP server to ChatGPT.
+  the MCP server to ChatGPT. The current Cloudflare account uses the reusable
+  `mikoto mcp users` policy, which allows `risunosu.com` email addresses and
+  does not require Gateway/WARP.
+- Application AUD tag:
+  `9134ab1917929a84cdadc263a15be177c3746e309d0b081cc337379b488f96fb`.
 
 Use the MCP URL, not only the hostname. Cloudflare's MCP server Access
 application flow expects the HTTP URL to include the MCP path.
@@ -59,12 +65,16 @@ Create a separate Cloudflare Access self-hosted application for the local bridge
 WebSocket endpoint and health check.
 
 - Cloudflare service: **Zero Trust Access Applications**.
+- Access application name: `mikoto bridge`.
 - Public hostname: `mcp.mikoto.takuk.me`.
 - Protected paths:
   - `/bridge*`
   - `/health*`
 - Access policy: allow only intended local operators and require the local
   computer to be connected through **Cloudflare One Client** in WARP mode.
+  The current Cloudflare account uses the reusable `default` policy for this,
+  backed by the `default` rule group that allows `risunosu.com` email addresses
+  and requires Gateway/WARP.
 - Managed OAuth: leave disabled for this application. The bridge is not an MCP
   OAuth client.
 
@@ -81,8 +91,10 @@ internet-reachable.
 - [Secure MCP servers with Cloudflare Access][cloudflare-mcp-access]
 - [Managed OAuth for self-hosted applications][cloudflare-managed-oauth]
 - [Access policies][cloudflare-access-policies]
+- [Access application tokens][cloudflare-application-token]
 
 [cloudflare-access-policies]: https://developers.cloudflare.com/cloudflare-one/access-controls/policies/
+[cloudflare-application-token]: https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/application-token/
 [cloudflare-managed-oauth]: https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/managed-oauth/
 [cloudflare-mcp-access]: https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/secure-mcp-servers/
 

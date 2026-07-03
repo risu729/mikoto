@@ -16,6 +16,12 @@ Cloudflare Access is the intended boundary for relay paths:
 - `/bridge*`: WARP-restricted Access policy.
 - `/health*`: WARP-restricted Access policy.
 
+Cloudflare Access forwards authenticated requests to the Worker and may include
+`Cf-Access-Jwt-Assertion`. Mikoto does not currently use this header for
+authorization. If relay behavior later depends on Access identity, the relay
+must validate the JWT signature, issuer, and application AUD tag before
+trusting any claims.
+
 Until those policies exist, the deployed relay paths should be treated as
 internet-reachable.
 
