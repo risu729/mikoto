@@ -15,7 +15,7 @@
 		"@cloudflare/vite-plugin": "1.42.3",
 		"@cloudflare/vitest-pool-workers": "0.16.20",
 		"@cloudflare/workers-types": "4.20260630.1",
-		"vite": "8.1.1",
+		"vite": "8.1.2",
 		"vitest": "4.1.9"
 	}
 }
