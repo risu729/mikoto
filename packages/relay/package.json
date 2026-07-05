@@ -12,7 +12,7 @@
 		"hono": "4.12.27"
 	},
 	"devDependencies": {
-		"@cloudflare/vite-plugin": "1.42.4",
+		"@cloudflare/vite-plugin": "1.43.0",
 		"@cloudflare/vitest-pool-workers": "0.17.0",
 		"@cloudflare/workers-types": "4.20260702.1",
 		"vite": "8.1.3",
