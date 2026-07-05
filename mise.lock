@@ -221,7 +221,7 @@ version = "7.0.1-rc"
 backend = "npm:typescript"
 
 [[tools.oxfmt]]
-version = "0.55.0"
+version = "0.57.0"
 backend = "npm:oxfmt"
 
 [[tools.oxlint]]
