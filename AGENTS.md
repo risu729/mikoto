@@ -1,5 +1,7 @@
 # AGENTS.md
 
+These instructions apply to all work in this repository.
+
 ## General
 
 - Always write documentation, comments, commit messages, and PR text in English.
