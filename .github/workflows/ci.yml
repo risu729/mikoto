@@ -29,7 +29,7 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          version: 2026.6.13
+          version: 2026.7.0
       - name: Run lint
         run: mise run check --lint
         env:
@@ -48,7 +48,7 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          version: 2026.6.13
+          version: 2026.7.0
       - name: Test
         run: mise run test
   relay-test:
@@ -65,7 +65,7 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          version: 2026.6.13
+          version: 2026.7.0
       - name: Relay tests
         run: mise //packages/relay:test
   docs-deploy:
@@ -82,7 +82,7 @@ jobs:
       - name: Install mise
         uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
         with:
-          version: 2026.6.13
+          version: 2026.7.0
         env:
           MISE_ENABLE_TOOLS: bun,node,wrangler
       - name: Store dependency versions
