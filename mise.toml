@@ -17,7 +17,7 @@ node = "26.4.0"
 wrangler = "4.106.0"
 "npm:typescript" = "7.0.1-rc"
 hk = "1.48.0"
-oxlint = "1.70.0"
+oxlint = "1.72.0"
 oxfmt = "0.57.0"
 actionlint = "1.7.12"
 # required for actionlint
