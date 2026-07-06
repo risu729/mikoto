@@ -49,6 +49,8 @@ Streamable HTTP endpoint.
 - MCP server ID: `mikoto`.
 - HTTP URL: `https://mcp.mikoto.takuk.me/mcp`.
 - Authentication: enable **Managed OAuth** for the MCP server application.
+- Managed OAuth Dynamic Client Registration allowed redirect URIs:
+  - `https://chatgpt.com/connector/oauth/*`
 - Access policy: allow only the Cloudflare Access users or groups that may add
   the MCP server to ChatGPT. The current Cloudflare account uses the reusable
   `mikoto mcp users` policy, which allows `risunosu.com` email addresses and
@@ -58,6 +60,58 @@ Streamable HTTP endpoint.
 
 Use the MCP URL, not only the hostname. Cloudflare's MCP server Access
 application flow expects the HTTP URL to include the MCP path.
+
+The ChatGPT redirect URI wildcard is required for OpenAI's ChatGPT Apps OAuth
+flow. When a user connects the custom app, ChatGPT dynamically registers an
+OAuth client with Cloudflare Access and supplies a callback URL under
+`https://chatgpt.com/connector/oauth/`. Cloudflare rejects the registration with
+`invalid_client_metadata` unless that callback is allowed in Managed OAuth's
+Dynamic Client Registration settings.
+
+### ChatGPT App Setup
+
+After the Cloudflare MCP application is ready, add Mikoto as a custom ChatGPT
+app:
+
+1. Open ChatGPT.
+2. Go to **Apps**.
+3. Select **Manage** to open **Settings > Apps**.
+4. Scroll to **Advanced settings**.
+5. Select **Create app**.
+6. Fill in:
+   - Name: `Mikoto`
+   - Description: `Access Mikoto MCP tools through the Cloudflare-protected relay.`
+   - Connection: **Server URL**
+   - Server URL: `https://mcp.mikoto.takuk.me/mcp`
+   - Authentication: **OAuth**
+7. Open **Advanced OAuth settings** and confirm that Dynamic Client
+   Registration is available. Cloudflare Managed OAuth should advertise:
+   - Authorization URL:
+     `https://risu729.cloudflareaccess.com/cdn-cgi/access/oauth/authorization`
+   - Token URL:
+     `https://risu729.cloudflareaccess.com/cdn-cgi/access/oauth/token`
+   - Registration URL:
+     `https://risu729.cloudflareaccess.com/cdn-cgi/access/oauth/registration`
+   - Resource: `https://mcp.mikoto.takuk.me/mcp`
+8. Check **I understand and want to continue**.
+9. Select **Create**.
+10. Select **Sign in with Mikoto** and complete the Cloudflare Access login.
+
+If ChatGPT reports `Dynamic client registration failed` with
+`redirect_uri is not allowed by the account configuration`, re-open the
+`mikoto mcp` Access application in Cloudflare, go to **Advanced settings >
+Managed OAuth**, and verify that
+`https://chatgpt.com/connector/oauth/*` is present in **Allowed redirect URIs**.
+
+If Cloudflare Access reports `Unable to find your Access application!` after
+entering the one-time PIN, check whether the browser is connected through
+Cloudflare One Client in WARP/Gateway mode. The observed failure mode includes
+`private_app_flow: 1` in the Access login metadata, which means Cloudflare is
+treating the ChatGPT OAuth login as a private application flow instead of the
+public MCP Managed OAuth flow. As a temporary workaround, disconnect WARP before
+starting **Sign in with Mikoto**, complete the ChatGPT OAuth connection, then
+re-enable WARP for bridge usage. This should be fixed in the future so ChatGPT
+OAuth login does not require temporarily leaving WARP.
 
 ### Bridge And Health Endpoints
 
@@ -90,6 +144,7 @@ internet-reachable.
 
 - [Secure MCP servers with Cloudflare Access][cloudflare-mcp-access]
 - [Managed OAuth for self-hosted applications][cloudflare-managed-oauth]
+- [OpenAI Apps SDK authentication][openai-apps-auth]
 - [Access policies][cloudflare-access-policies]
 - [Access application tokens][cloudflare-application-token]
 
@@ -97,6 +152,7 @@ internet-reachable.
 [cloudflare-application-token]: https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/application-token/
 [cloudflare-managed-oauth]: https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/managed-oauth/
 [cloudflare-mcp-access]: https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/secure-mcp-servers/
+[openai-apps-auth]: https://developers.openai.com/apps-sdk/build/auth
 
 ## GitHub Actions Inputs
 
