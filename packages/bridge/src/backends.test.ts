@@ -1,4 +1,5 @@
 import type { BackendServer } from "@mikoto/protocol";
+import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import type { ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
 import { describe, expect, it, vi } from "vitest";
 
@@ -113,12 +114,18 @@ describe("startConfiguredBackends routing", () => {
 		).resolves.toEqual({
 			content: [{ text: "done", type: "text" }],
 		});
-		expect(callTool).toHaveBeenCalledWith({
-			arguments: { request: "read page" },
-			name: "codex_chrome_read",
-		});
+		expect(callTool).toHaveBeenCalledWith(
+			{
+				arguments: { request: "read page" },
+				name: "codex_chrome_read",
+			},
+			CallToolResultSchema,
+			{ timeout: 300_000 },
+		);
 	});
+});
 
+describe("startConfiguredBackends alias validation", () => {
 	it("fails when an alias target is missing", async () => {
 		const close = createCloseMock();
 		const clientFactory = createClientFactory(close, { tools: [] });
@@ -134,6 +141,37 @@ describe("startConfiguredBackends routing", () => {
 			),
 		).rejects.toThrow("Alias missing_alias targets unknown tool: codex.missing");
 		expect(close).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("startConfiguredBackends backend timeouts", () => {
+	it("passes the requested tool timeout through to the backend MCP client", async () => {
+		const callTool = vi.fn(() =>
+			Promise.resolve({ content: [{ text: "done", type: "text" as const }] }),
+		);
+		const clientFactory = createClientFactory(
+			createCloseMock(),
+			{ tools: [chromeReadTool] },
+			callTool,
+		);
+		const discovery = await startConfiguredBackends([createStdioServer()], { clientFactory });
+
+		await discovery.callTool("codex.codex_chrome_read", {
+			request: "read page",
+			timeoutMs: 120_000,
+		});
+
+		expect(callTool).toHaveBeenCalledWith(
+			{
+				arguments: {
+					request: "read page",
+					timeoutMs: 120_000,
+				},
+				name: "codex_chrome_read",
+			},
+			CallToolResultSchema,
+			{ timeout: 121_000 },
+		);
 	});
 });
 
