@@ -105,14 +105,8 @@ Managed OAuth**, and verify that
 `https://chatgpt.com/connector/oauth/*` is present in **Allowed redirect URIs**.
 
 If Cloudflare Access reports `Unable to find your Access application!` after
-entering the one-time PIN, check whether the browser is connected through
-Cloudflare One Client in WARP/Gateway mode. The observed failure mode includes
-`private_app_flow: 1` in the Access login metadata, which means Cloudflare is
-treating the ChatGPT OAuth login as a private application flow instead of the
-public MCP Managed OAuth flow. As a temporary workaround, disconnect WARP before
-starting **Sign in with Mikoto**, complete the ChatGPT OAuth connection, then
-re-enable WARP for bridge usage. This should be fixed in the future so ChatGPT
-OAuth login does not require temporarily leaving WARP.
+entering the one-time PIN, see the known WARP/Gateway login issue:
+[risu729/mikoto#123](https://github.com/risu729/mikoto/issues/123).
 
 ### Bridge And Health Endpoints
 
