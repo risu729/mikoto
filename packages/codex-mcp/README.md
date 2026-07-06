@@ -4,18 +4,19 @@ Standalone MCP server that exposes Codex as an asynchronous fire-poll tool
 surface for MCP clients.
 
 The server does not expose synchronous Codex execution tools. Start tools return
-a task id quickly, status tools return running state and partial normalized
-output, result tools return completed output, and cancel tools request
-interruption of the underlying Codex app-server turn.
+a task id quickly, shared run lifecycle tools return running state, partial
+normalized output, completed output, or request interruption of the underlying
+Codex app-server turn.
 
 The browser-read flow is:
 
 1. `codex_chrome_read_start`
-2. `codex_chrome_read_status`
-3. `codex_chrome_read_result`
-4. `codex_chrome_read_cancel` when interruption is needed
+2. `codex_run_status`
+3. `codex_run_result`
+4. `codex_run_cancel` when interruption is needed
 
-The generic task flow mirrors the same shape with `codex_task_*` tools.
+The generic task flow uses `codex_task_start`, then the same `codex_run_*`
+lifecycle tools.
 
 ## Local Development
 

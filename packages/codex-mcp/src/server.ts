@@ -100,33 +100,6 @@ const registerTaskTools = (server: McpServer, tasks: CodexTaskManager): void => 
 		},
 		(input) => createPayloadResult(tasks.start("task", normalizeTaskInput(input))),
 	);
-	server.registerTool(
-		"codex_task_status",
-		{
-			description: findToolDescription("codex_task_status"),
-			inputSchema: CodexTaskIdInputSchema,
-			title: "Check Codex Task",
-		},
-		(input) => createPayloadResult(tasks.status(input.taskId)),
-	);
-	server.registerTool(
-		"codex_task_result",
-		{
-			description: findToolDescription("codex_task_result"),
-			inputSchema: CodexTaskIdInputSchema,
-			title: "Get Codex Task Result",
-		},
-		(input) => createPayloadResult(tasks.result(input.taskId)),
-	);
-	server.registerTool(
-		"codex_task_cancel",
-		{
-			description: findToolDescription("codex_task_cancel"),
-			inputSchema: CodexTaskIdInputSchema,
-			title: "Cancel Codex Task",
-		},
-		async (input) => createPayloadResult(await tasks.cancel(input.taskId)),
-	);
 };
 
 const registerChromeReadTools = (server: McpServer, tasks: CodexTaskManager): void => {
@@ -142,30 +115,33 @@ const registerChromeReadTools = (server: McpServer, tasks: CodexTaskManager): vo
 				tasks.start("chrome_read", createChromeReadTaskInput(normalizeChromeReadInput(input))),
 			),
 	);
+};
+
+const registerRunTools = (server: McpServer, tasks: CodexTaskManager): void => {
 	server.registerTool(
-		"codex_chrome_read_status",
+		"codex_run_status",
 		{
-			description: findToolDescription("codex_chrome_read_status"),
+			description: findToolDescription("codex_run_status"),
 			inputSchema: CodexTaskIdInputSchema,
-			title: "Check Browser Read",
+			title: "Check Codex Run",
 		},
 		(input) => createPayloadResult(tasks.status(input.taskId)),
 	);
 	server.registerTool(
-		"codex_chrome_read_result",
+		"codex_run_result",
 		{
-			description: findToolDescription("codex_chrome_read_result"),
+			description: findToolDescription("codex_run_result"),
 			inputSchema: CodexTaskIdInputSchema,
-			title: "Get Browser Read Result",
+			title: "Get Codex Run Result",
 		},
 		(input) => createPayloadResult(tasks.result(input.taskId)),
 	);
 	server.registerTool(
-		"codex_chrome_read_cancel",
+		"codex_run_cancel",
 		{
-			description: findToolDescription("codex_chrome_read_cancel"),
+			description: findToolDescription("codex_run_cancel"),
 			inputSchema: CodexTaskIdInputSchema,
-			title: "Cancel Browser Read",
+			title: "Cancel Codex Run",
 		},
 		async (input) => createPayloadResult(await tasks.cancel(input.taskId)),
 	);
@@ -193,6 +169,7 @@ const createCodexMcpServer = async (
 
 	registerTaskTools(server, tasks);
 	registerChromeReadTools(server, tasks);
+	registerRunTools(server, tasks);
 
 	return server;
 };

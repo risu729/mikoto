@@ -5,34 +5,21 @@ const CODEX_MCP_TOOLS = [
 		name: "codex_task_start",
 	},
 	{
-		description: "Return status, partial text, and normalized items for a running Codex task.",
-		name: "codex_task_status",
-	},
-	{
-		description: "Return the final normalized result for a completed Codex task.",
-		name: "codex_task_result",
-	},
-	{
-		description: "Request cancellation for a running Codex task.",
-		name: "codex_task_cancel",
-	},
-	{
 		description:
 			"Start a bounded read-only browser request through Codex and @Chrome and return a task id for polling.",
 		name: "codex_chrome_read_start",
 	},
 	{
-		description:
-			"Return status, partial text, and normalized items for a running Codex browser read.",
-		name: "codex_chrome_read_status",
+		description: "Return status, partial text, and normalized items for a running Codex run.",
+		name: "codex_run_status",
 	},
 	{
-		description: "Return the final normalized result for a completed Codex browser read.",
-		name: "codex_chrome_read_result",
+		description: "Return the final normalized result for a completed Codex run.",
+		name: "codex_run_result",
 	},
 	{
-		description: "Request cancellation for a running Codex browser read.",
-		name: "codex_chrome_read_cancel",
+		description: "Request cancellation for a running Codex run.",
+		name: "codex_run_cancel",
 	},
 ] as const;
 

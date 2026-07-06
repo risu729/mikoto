@@ -70,13 +70,10 @@ describe("codex MCP tool set", () => {
 	it("exposes async fire-poll Codex tools", () => {
 		expect(CODEX_MCP_TOOLS.map((tool) => tool.name)).toEqual([
 			"codex_task_start",
-			"codex_task_status",
-			"codex_task_result",
-			"codex_task_cancel",
 			"codex_chrome_read_start",
-			"codex_chrome_read_status",
-			"codex_chrome_read_result",
-			"codex_chrome_read_cancel",
+			"codex_run_status",
+			"codex_run_result",
+			"codex_run_cancel",
 		]);
 	});
 
