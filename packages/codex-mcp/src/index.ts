@@ -1,4 +1,5 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import is from "@sindresorhus/is";
 
 import { createCodexMcpServer } from "./server";
 
@@ -14,7 +15,7 @@ if (import.meta.main) {
 	try {
 		await main();
 	} catch (error) {
-		process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+		process.stderr.write(`${is.error(error) ? error.message : String(error)}\n`);
 		process.exit(1);
 	}
 }
