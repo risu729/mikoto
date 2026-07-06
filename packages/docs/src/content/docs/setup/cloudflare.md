@@ -80,7 +80,8 @@ app:
 5. Select **Create app**.
 6. Fill in:
    - Name: `Mikoto`
-   - Description: `Access Mikoto MCP tools through the Cloudflare-protected relay.`
+   - Description:
+     `Access Mikoto MCP tools through the Cloudflare-protected relay.`
    - Connection: **Server URL**
    - Server URL: `https://mcp.mikoto.takuk.me/mcp`
    - Authentication: **OAuth**
