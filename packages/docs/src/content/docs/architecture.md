@@ -31,8 +31,22 @@ flowchart TD
 
 ## Bridge Metadata
 
-The relay exposes `mikoto_list_bridges` so ChatGPT can inspect safe bridge and
-tool metadata before selecting a local target.
+The relay exposes a stable ChatGPT-facing tool set:
+
+- `mikoto_list_bridges`: inspect safe bridge and tool metadata.
+- `mikoto_call_tool`: call one backend tool by name after selecting it from
+  bridge metadata.
+
+Backend tools are not advertised as native ChatGPT tools. The bridge still
+pushes tool metadata to the relay, and ChatGPT uses that metadata as the input
+catalog for `mikoto_call_tool`.
+
+This fixed tool set works around a ChatGPT Apps limitation: tool discovery is
+not reliably refreshed for an already connected app session, so tools added
+after a bridge connects may remain unavailable even when the relay advertises
+them. Keeping the native MCP tool names stable lets ChatGPT keep using the same
+tools while Mikoto refreshes backend tool metadata through
+`mikoto_list_bridges`.
 
 ```mermaid
 sequenceDiagram
@@ -43,13 +57,18 @@ sequenceDiagram
   ChatGPT->>Worker: call mikoto_list_bridges
   Worker->>DO: handle bridge listing
   DO->>DO: read bridge metadata
-  DO-->>Worker: bridges {id, os, status, lastHeartbeat, tools}
+  DO-->>Worker: bridges {id, os, status, lastHeartbeat, toolMetadata}
   Worker-->>ChatGPT: mikoto_list_bridges result
+  ChatGPT->>Worker: call mikoto_call_tool {tool, arguments, bridgeId}
+  Worker->>DO: forward selected tool call
+  DO-->>Worker: backend MCP tool result
+  Worker-->>ChatGPT: backend MCP tool result
 ```
 
 The relay returns only safe metadata: bridge id, bridge OS, status, last
-heartbeat time, and exposed tool names. It must not return secrets, local paths,
-environment variables, raw backend config, raw tool arguments, or tool results.
+heartbeat time, exposed tool names, and tool input schemas. It must not return
+secrets, local paths, environment variables, raw backend config, raw tool
+arguments, or historical tool results.
 
 ## Component Details
 

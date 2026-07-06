@@ -36,13 +36,6 @@ type BridgeListPayload = {
 		tools: string[];
 	}>;
 };
-type ToolCallPayload = {
-	error?: { code: string; message: string };
-	id: string;
-	ok: boolean;
-	result?: unknown;
-	type: "tool.result";
-};
 type WebSocketCloseSnapshot = {
 	code: number;
 	reason: string;
@@ -197,49 +190,6 @@ const callMcpTool = async (
 const callListBridgesTool = async (): Promise<BridgeListPayload> =>
 	(await callMcpTool("mikoto_list_bridges", {})) as BridgeListPayload;
 
-const createBridgeMeta = (bridgeId?: string): null | Record<string, unknown> =>
-	bridgeId ? { "mikoto/bridgeId": bridgeId } : null;
-
-const callExposedTool = async (
-	tool: string,
-	input: {
-		arguments?: Record<string, unknown>;
-		bridgeId?: string;
-	},
-): Promise<ToolCallPayload> => {
-	const meta = createBridgeMeta(input.bridgeId);
-	const result = meta
-		? await callMcpTool(tool, input.arguments ?? {}, meta)
-		: await callMcpTool(tool, input.arguments ?? {});
-
-	return result as ToolCallPayload;
-};
-
-const callSuccessfulExposedTool = async (
-	tool: string,
-	input: {
-		arguments?: Record<string, unknown>;
-		bridgeId?: string;
-	},
-): Promise<McpToolResult["result"]> => {
-	const meta = createBridgeMeta(input.bridgeId);
-	const body = meta
-		? await callRawMcpTool(tool, input.arguments ?? {}, meta)
-		: await callRawMcpTool(tool, input.arguments ?? {});
-
-	return body.result;
-};
-
-const callLocalTool = async (input: {
-	arguments?: Record<string, unknown>;
-	bridgeId?: string;
-	tool: string;
-}): Promise<ToolCallPayload> => {
-	const { tool, ...toolInput } = input;
-
-	return await callExposedTool(tool, toolInput);
-};
-
 const fetchUnsupportedMcpMethod = async (): Promise<Response> =>
 	await SELF.fetch("http://example.com/mcp", {
 		body: JSON.stringify({
@@ -284,8 +234,7 @@ export {
 	DEFAULT_TOOL,
 	MCP_PROTOCOL_VERSION,
 	callListBridgesTool,
-	callLocalTool,
-	callSuccessfulExposedTool,
+	callRawMcpTool,
 	fetchUnsupportedMcpMethod,
 	initializeMcp,
 	listMcpTools,

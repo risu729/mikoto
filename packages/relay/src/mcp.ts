@@ -1,12 +1,9 @@
 import { JsonObjectSchema } from "@mikoto/protocol";
-import type { JsonObject, ToolCallResult, ToolInfo } from "@mikoto/protocol";
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import {
-	CallToolRequestSchema,
-	CallToolResultSchema,
-	ListToolsRequestSchema,
-} from "@modelcontextprotocol/sdk/types.js";
-import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { JsonObject, ToolCallResult } from "@mikoto/protocol";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
 
 import type { RegisteredBridge } from "./routing";
 
@@ -14,7 +11,14 @@ type Env = {
 	RELAY_DO: DurableObjectNamespace;
 };
 
-const BRIDGE_ID_META_KEYS = ["mikoto/bridgeId", "bridgeId"] as const;
+const CALL_TOOL_NAME = "mikoto_call_tool";
+const LIST_BRIDGES_TOOL_NAME = "mikoto_list_bridges";
+const EmptyInputSchema = z.strictObject({});
+const CallToolInputSchema = z.strictObject({
+	arguments: JsonObjectSchema.optional(),
+	bridgeId: z.string().min(1).optional(),
+	tool: z.string().min(1),
+});
 
 const getRelayStub = (env: Env): DurableObjectStub => {
 	const durableObjectId = env.RELAY_DO.idFromName("global");
@@ -54,60 +58,6 @@ const callBridgeTool = async (
 	return (await response.json()) as ToolCallResult;
 };
 
-const listExposedTools = (bridges: RegisteredBridge[]): ToolInfo[] => {
-	const tools = new Map<string, ToolInfo>();
-
-	for (const bridge of bridges) {
-		for (const tool of bridge.toolMetadata) {
-			if (!tools.has(tool.name)) {
-				tools.set(tool.name, tool);
-			}
-		}
-	}
-
-	return Array.from(tools.values()).sort((left, right) => left.name.localeCompare(right.name));
-};
-
-const createListBridgesTool = (): Tool => ({
-	description: "List currently connected local Mikoto bridges.",
-	inputSchema: {
-		additionalProperties: false,
-		properties: {},
-		type: "object",
-	},
-	name: "mikoto_list_bridges",
-	title: "List Mikoto Bridges",
-});
-
-const createExposedTool = (tool: ToolInfo): Tool => {
-	const exposed: Tool = {
-		inputSchema: tool.inputSchema as Tool["inputSchema"],
-		name: tool.name,
-		title: tool.name,
-	};
-
-	if (tool.description) {
-		exposed.description = tool.description;
-	}
-
-	return exposed;
-};
-
-const readBridgeIdMeta = (meta: unknown): null | string => {
-	if (!meta || typeof meta !== "object") {
-		return null;
-	}
-
-	for (const key of BRIDGE_ID_META_KEYS) {
-		const value = (meta as Record<string, unknown>)[key];
-		if (typeof value === "string" && value.length > 0) {
-			return value;
-		}
-	}
-
-	return null;
-};
-
 const toCallToolResult = (result: ToolCallResult): CallToolResult => {
 	if (!result.ok) {
 		return createJsonToolResult(result, true);
@@ -132,56 +82,38 @@ const toCallToolResult = (result: ToolCallResult): CallToolResult => {
 	return parsed.data;
 };
 
-const handleToolCall = async (input: {
-	args: JsonObject;
-	bridgeId: null | string;
-	env: Env;
-	name: string;
-}): Promise<CallToolResult> => {
-	const { args, bridgeId, env, name } = input;
-
-	if (name === "mikoto_list_bridges") {
-		return createJsonToolResult({ bridges: await readBridges(env) });
-	}
-
-	return toCallToolResult(
-		await callBridgeTool(env, {
-			arguments: args,
-			...(bridgeId ? { bridgeId } : {}),
-			tool: name,
-		}),
-	);
-};
-
-const createRelayMcpServer = (env: Env): Server => {
-	const server = new Server(
-		{
-			name: "mikoto-relay",
-			version: "0.0.0",
-		},
-		{
-			capabilities: {
-				tools: {},
-			},
-		},
-	);
-
-	server.setRequestHandler(ListToolsRequestSchema, async () => ({
-		tools: [
-			createListBridgesTool(),
-			...listExposedTools(await readBridges(env)).map((tool) => createExposedTool(tool)),
-		],
-	}));
-	server.setRequestHandler(CallToolRequestSchema, async (request) => {
-		const meta = request.params["_meta"];
-
-		return await handleToolCall({
-			args: JsonObjectSchema.parse(request.params.arguments ?? {}),
-			bridgeId: readBridgeIdMeta(meta),
-			env,
-			name: request.params.name,
-		});
+const createRelayMcpServer = (env: Env): McpServer => {
+	const server = new McpServer({
+		name: "mikoto-relay",
+		version: "0.0.0",
 	});
+
+	server.registerTool(
+		LIST_BRIDGES_TOOL_NAME,
+		{
+			description: "List currently connected local Mikoto bridges.",
+			inputSchema: EmptyInputSchema,
+			title: "List Mikoto Bridges",
+		},
+		async () => createJsonToolResult({ bridges: await readBridges(env) }),
+	);
+	server.registerTool(
+		CALL_TOOL_NAME,
+		{
+			description:
+				"Call a tool on a connected local Mikoto bridge. Call mikoto_list_bridges first, inspect each bridge's toolMetadata, then pass the selected backend tool name and arguments here.",
+			inputSchema: CallToolInputSchema,
+			title: "Call Mikoto Tool",
+		},
+		async (input) =>
+			toCallToolResult(
+				await callBridgeTool(env, {
+					arguments: input.arguments ?? {},
+					...(input.bridgeId ? { bridgeId: input.bridgeId } : {}),
+					tool: input.tool,
+				}),
+			),
+	);
 
 	return server;
 };
