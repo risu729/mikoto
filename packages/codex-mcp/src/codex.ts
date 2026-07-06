@@ -1,5 +1,6 @@
 // oxlint-disable eslint/complexity eslint/max-lines eslint/max-lines-per-function eslint/max-statements eslint/no-undefined promise/avoid-new -- App-server JSON-RPC handling is intentionally centralized and callback-driven.
 import { spawn } from "node:child_process";
+import { env as processEnv } from "node:process";
 import { createInterface } from "node:readline";
 
 import { execa } from "execa";
@@ -85,6 +86,9 @@ type CodexRunResult = {
 type CodexAppServerCommand = {
 	args: string[];
 	command: string;
+};
+type CodexCommandEnvironment = {
+	MIKOTO_CODEX_COMMAND?: string;
 };
 
 type CodexAppServerClientOptions = {
@@ -172,7 +176,66 @@ const resolveCodexCommand = (hasMise = true): string[] => {
 	return ["bunx", "codex@latest"];
 };
 
-const resolveInstalledCodexCommand = async (): Promise<CodexAppServerCommand> => {
+const parseCommandLine = (value: string): string[] => {
+	const args: string[] = [];
+	let current = "";
+	let quote: null | string = null;
+
+	for (let index = 0; index < value.length; index += 1) {
+		const char = value[index] ?? "";
+
+		if (quote) {
+			if (char === quote) {
+				quote = null;
+			} else {
+				current += char;
+			}
+		} else if (char === "'" || char === '"') {
+			quote = char;
+		} else if (/\s/u.test(char)) {
+			if (current) {
+				args.push(current);
+				current = "";
+			}
+		} else {
+			current += char;
+		}
+	}
+
+	if (quote) {
+		throw new Error("MIKOTO_CODEX_COMMAND contains an unterminated quote");
+	}
+	if (current) {
+		args.push(current);
+	}
+
+	return args;
+};
+
+const parseConfiguredCodexCommand = (value: string): CodexAppServerCommand => {
+	const trimmed = value.trim();
+
+	if (!trimmed) {
+		throw new Error("MIKOTO_CODEX_COMMAND must not be empty");
+	}
+
+	const [command = "", ...args] = parseCommandLine(trimmed);
+
+	if (!command) {
+		throw new Error("MIKOTO_CODEX_COMMAND must include a command");
+	}
+
+	return { args, command };
+};
+
+const resolveInstalledCodexCommand = async (
+	environment: CodexCommandEnvironment = processEnv,
+): Promise<CodexAppServerCommand> => {
+	const configuredCommand = environment.MIKOTO_CODEX_COMMAND;
+	if (configuredCommand !== undefined) {
+		return parseConfiguredCodexCommand(configuredCommand);
+	}
+
 	const command = resolveCodexCommand(await commandExists("mise"));
 	const executable = command.at(0);
 
@@ -827,6 +890,7 @@ export {
 	MAX_TOOL_TIMEOUT_MS,
 	normalizeTimeoutMs,
 	resolveCodexCommand,
+	resolveInstalledCodexCommand,
 };
 export type {
 	CodexAppServerClientOptions,
