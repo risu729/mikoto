@@ -10,6 +10,13 @@ import type { Context } from "hono";
 import { Hono } from "hono";
 
 import { parseBridgeMessage, sendBridgeError, sendBridgeRegistered } from "./bridge-messages";
+import {
+	acceptBridgeSocket,
+	bridgeStorageKey,
+	deleteBridgeStorage,
+	pruneDisconnectedBridgeStorage,
+	storeRegisteredBridge,
+} from "./bridge-registry";
 import createRelayMcpServer from "./mcp";
 import { createPendingError, createToolError, selectBridge } from "./routing";
 import type { PendingToolCall, RegisteredBridge } from "./routing";
@@ -75,7 +82,7 @@ class RelayDurableObject {
 			return new Response("Expected WebSocket upgrade", { status: 426 });
 		}
 
-		return this.acceptBridgeSocket();
+		return acceptBridgeSocket(this.state);
 	}
 
 	async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
@@ -90,26 +97,9 @@ class RelayDurableObject {
 	async webSocketClose(ws: WebSocket): Promise<void> {
 		const attachment = ws.deserializeAttachment() as { bridgeId?: string } | undefined;
 		if (attachment?.bridgeId) {
-			await this.state.storage.delete(`bridge:${attachment.bridgeId}`);
-			this.rejectPendingCallsForBridge(
-				attachment.bridgeId,
-				createPendingError("bridge_disconnected", "Bridge disconnected during tool call."),
-			);
+			await deleteBridgeStorage(this.state, attachment.bridgeId);
+			this.rejectBridgeDisconnected(attachment.bridgeId);
 		}
-	}
-
-	private acceptBridgeSocket(): Response {
-		const pair = new WebSocketPair();
-		const [client, server] = Object.values(pair) as [WebSocket, WebSocket];
-		const connectedAt = new Date().toISOString();
-
-		server.serializeAttachment({ connectedAt });
-		this.state.acceptWebSocket(server);
-
-		return new Response(null, {
-			status: 101,
-			webSocket: client,
-		});
 	}
 
 	private async handleBridgeTextMessage(ws: WebSocket, message: string): Promise<void> {
@@ -135,26 +125,17 @@ class RelayDurableObject {
 	}
 
 	private async registerBridge(message: BridgeHelloMessage, ws: WebSocket): Promise<boolean> {
+		await this.pruneDisconnectedBridges();
+
 		const { bridge } = message;
-		const key = `bridge:${bridge.id}`;
-		const existing = await this.state.storage.get<RegisteredBridge>(key);
+		const existing = await this.state.storage.get<RegisteredBridge>(bridgeStorageKey(bridge.id));
 
 		if (existing?.status === "connected") {
 			ws.close(1008, "duplicate bridge id");
 			return false;
 		}
 
-		const attachment = ws.deserializeAttachment() as { connectedAt?: string } | undefined;
-		await this.state.storage.put(key, {
-			...bridge,
-			connectedAt: attachment?.connectedAt ?? new Date().toISOString(),
-			toolMetadata: message.tools,
-			tools: message.tools.map((tool) => tool.name),
-		});
-		ws.serializeAttachment({
-			...(ws.deserializeAttachment() as object | undefined),
-			bridgeId: bridge.id,
-		});
+		await storeRegisteredBridge(this.state, ws, message);
 
 		return true;
 	}
@@ -166,7 +147,15 @@ class RelayDurableObject {
 		});
 	}
 
+	private async pruneDisconnectedBridges(): Promise<void> {
+		await pruneDisconnectedBridgeStorage(this.state, (bridgeId) => {
+			this.rejectBridgeDisconnected(bridgeId);
+		});
+	}
+
 	private async readBridges(): Promise<RegisteredBridge[]> {
+		await this.pruneDisconnectedBridges();
+
 		const list = await this.state.storage.list<RegisteredBridge>({ prefix: "bridge:" });
 		return Array.from(list.values()).sort((left, right) => left.id.localeCompare(right.id));
 	}
@@ -279,6 +268,13 @@ class RelayDurableObject {
 				pending.reject(error);
 			}
 		}
+	}
+
+	private rejectBridgeDisconnected(bridgeId: string): void {
+		this.rejectPendingCallsForBridge(
+			bridgeId,
+			createPendingError("bridge_disconnected", "Bridge disconnected during tool call."),
+		);
 	}
 
 	private resolvePendingToolCall(result: ToolCallResult): void {

@@ -85,10 +85,19 @@ const selectBridge = (
 	return selectOnlyBridgeWithTool(bridges, tool);
 };
 
+const selectDisconnectedBridgeKeys = (
+	bridges: Iterable<[string, RegisteredBridge]>,
+	liveBridgeIds: ReadonlySet<string>,
+): string[] =>
+	Array.from(bridges)
+		.filter(([, bridge]) => bridge.status === "connected" && !liveBridgeIds.has(bridge.id))
+		.map(([key]) => key);
+
 export {
 	type PendingToolCall,
 	type RegisteredBridge,
 	createPendingError,
 	createToolError,
 	selectBridge,
+	selectDisconnectedBridgeKeys,
 };
