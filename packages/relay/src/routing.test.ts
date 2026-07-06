@@ -1,6 +1,8 @@
 import { reset } from "cloudflare:test";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { selectDisconnectedBridgeKeys } from "./routing";
+import type { RegisteredBridge } from "./routing";
 import {
 	DEFAULT_TOOL,
 	callLocalTool,
@@ -13,6 +15,53 @@ import {
 
 afterEach(async () => {
 	await reset();
+});
+
+describe("relay bridge stale records", () => {
+	it("selects stored bridges without live sockets for pruning", () => {
+		const bridges = new Map<string, RegisteredBridge>([
+			[
+				"bridge:alive-machine",
+				{
+					connectedAt: "2026-07-06T00:00:00.000Z",
+					id: "alive-machine",
+					lastHeartbeat: "2026-07-06T00:00:00.000Z",
+					os: "windows",
+					status: "connected",
+					toolMetadata: [],
+					tools: [],
+				},
+			],
+			[
+				"bridge:stale-machine",
+				{
+					connectedAt: "2026-07-06T00:00:00.000Z",
+					id: "stale-machine",
+					lastHeartbeat: "2026-07-06T00:00:00.000Z",
+					os: "windows",
+					status: "connected",
+					toolMetadata: [],
+					tools: [],
+				},
+			],
+			[
+				"bridge:already-disconnected",
+				{
+					connectedAt: "2026-07-06T00:00:00.000Z",
+					id: "already-disconnected",
+					lastHeartbeat: "2026-07-06T00:00:00.000Z",
+					os: "windows",
+					status: "disconnected",
+					toolMetadata: [],
+					tools: [],
+				},
+			],
+		]);
+
+		expect(selectDisconnectedBridgeKeys(bridges, new Set(["alive-machine"]))).toEqual([
+			"bridge:stale-machine",
+		]);
+	});
 });
 
 describe("relay bridge tool routing", () => {
