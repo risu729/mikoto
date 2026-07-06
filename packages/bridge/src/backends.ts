@@ -6,15 +6,13 @@ import {
 	StdioClientTransport,
 } from "@modelcontextprotocol/sdk/client/stdio.js";
 import type { StdioServerParameters } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import type { ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
 
+import resolveBackendToolCallOptions from "./backend-timeouts";
+
 type StdioBackendServer = Extract<BackendServer, { transport: "stdio" }>;
-type BackendToolResult = Awaited<ReturnType<Client["callTool"]>>;
-type BackendMcpClient = {
-	callTool: (params: { arguments: JsonObject; name: string }) => Promise<BackendToolResult>;
-	close: () => Promise<void>;
-	listTools: () => Promise<ListToolsResult>;
-};
+type BackendMcpClient = Pick<Client, "callTool" | "close" | "listTools">;
 type BackendClientFactory = (server: StdioBackendServer) => Promise<BackendMcpClient>;
 type ToolRoute = {
 	backendId: string;
@@ -260,10 +258,14 @@ const createBackendDiscovery = (
 				throw new Error(`Tool is not exposed by this bridge: ${tool}`);
 			}
 
-			const result = await route.client.callTool({
-				arguments: args,
-				name: route.backendToolName,
-			});
+			const result = await route.client.callTool(
+				{
+					arguments: args,
+					name: route.backendToolName,
+				},
+				CallToolResultSchema,
+				resolveBackendToolCallOptions(args),
+			);
 			return toJsonValue(result);
 		},
 		close: () => closeStartedBackends(started),
