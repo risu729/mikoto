@@ -53,6 +53,10 @@ describe("relay MCP endpoint", () => {
 					name: "mikoto_list_bridges",
 					title: "List Mikoto Bridges",
 				}),
+				expect.objectContaining({
+					name: "mikoto_call_tool",
+					title: "Call Mikoto Tool",
+				}),
 			]),
 		);
 		expect(body.result.tools).not.toEqual(
@@ -69,26 +73,16 @@ describe("relay MCP endpoint", () => {
 });
 
 describe("relay MCP local tool exposure", () => {
-	it("lists connected local bridge tools through Streamable HTTP", async () => {
+	it("keeps the public MCP tool list stable when local bridge tools connect", async () => {
 		const webSocket = await registerBridge();
 		const body = await listMcpTools();
 
-		expect(body.result.tools).toEqual(
-			expect.arrayContaining([
-				expect.objectContaining({
-					description: "Read browser context.",
-					inputSchema: {
-						additionalProperties: false,
-						properties: {
-							request: { type: "string" },
-						},
-						required: ["request"],
-						type: "object",
-					},
-					name: DEFAULT_TOOL,
-					title: DEFAULT_TOOL,
-				}),
-			]),
+		expect(body.result.tools.map((tool) => tool.name).sort()).toEqual([
+			"mikoto_call_tool",
+			"mikoto_list_bridges",
+		]);
+		expect(body.result.tools).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ name: DEFAULT_TOOL })]),
 		);
 
 		webSocket.close();

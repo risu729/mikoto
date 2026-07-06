@@ -5,8 +5,7 @@ import { selectDisconnectedBridgeKeys } from "./routing";
 import type { RegisteredBridge } from "./routing";
 import {
 	DEFAULT_TOOL,
-	callLocalTool,
-	callSuccessfulExposedTool,
+	callRawMcpTool,
 	registerBridge,
 	registerBridgeWithId,
 	sendToolSuccess,
@@ -16,6 +15,34 @@ import {
 afterEach(async () => {
 	await reset();
 });
+
+type DispatcherInput = {
+	arguments?: Record<string, unknown>;
+	bridgeId?: string;
+	tool: string;
+};
+
+type ToolCallPayload = {
+	error?: { code: string; message: string };
+	id: string;
+	ok: boolean;
+	result?: unknown;
+	type: "tool.result";
+};
+
+const callDispatcherTool = async (input: DispatcherInput): Promise<ToolCallPayload> => {
+	const body = await callRawMcpTool("mikoto_call_tool", input);
+
+	return JSON.parse(body.result.content[0]?.text ?? "{}") as ToolCallPayload;
+};
+
+const callSuccessfulDispatcherTool = async (
+	input: DispatcherInput,
+): Promise<Awaited<ReturnType<typeof callRawMcpTool>>["result"]> => {
+	const body = await callRawMcpTool("mikoto_call_tool", input);
+
+	return body.result;
+};
 
 describe("relay bridge stale records", () => {
 	it("selects stored bridges without live sockets for pruning", () => {
@@ -64,12 +91,13 @@ describe("relay bridge stale records", () => {
 	});
 });
 
-describe("relay bridge tool routing", () => {
-	it("forwards a tool call to the selected bridge", async () => {
+describe("relay dynamic tool dispatcher routing", () => {
+	it("forwards a dynamic tool call to the selected bridge", async () => {
 		const webSocket = await registerBridge();
-		const call = callSuccessfulExposedTool(DEFAULT_TOOL, {
+		const call = callSuccessfulDispatcherTool({
 			arguments: { request: "read page" },
 			bridgeId: "dev-machine",
+			tool: DEFAULT_TOOL,
 		});
 		const request = JSON.parse(await waitForMessage(webSocket)) as { id: string; tool: string };
 
@@ -88,13 +116,41 @@ describe("relay bridge tool routing", () => {
 	});
 });
 
-describe("relay bridge selection errors", () => {
-	it("rejects ambiguous bridge selection", async () => {
+describe("relay dynamic tool dispatcher defaults", () => {
+	it("defaults dynamic tool arguments to an empty object", async () => {
+		const webSocket = await registerBridge();
+		const call = callSuccessfulDispatcherTool({ bridgeId: "dev-machine", tool: DEFAULT_TOOL });
+		const request = JSON.parse(await waitForMessage(webSocket)) as { id: string };
+
+		expect(request).toMatchObject({
+			arguments: {},
+			bridgeId: "dev-machine",
+			tool: DEFAULT_TOOL,
+			type: "tool.call",
+		});
+		sendToolSuccess(webSocket, request, { content: [{ text: "done", type: "text" }] });
+
+		await expect(call).resolves.toEqual({
+			content: [{ text: "done", type: "text" }],
+		});
+		webSocket.close();
+	});
+});
+
+describe("relay dynamic tool dispatcher errors", () => {
+	it("returns bridge selection errors through the dispatcher", async () => {
 		const first = await registerBridgeWithId("first-machine");
 		const second = await registerBridgeWithId("second-machine");
 
-		await expect(callLocalTool({ tool: DEFAULT_TOOL })).resolves.toMatchObject({
+		await expect(callDispatcherTool({ tool: DEFAULT_TOOL })).resolves.toMatchObject({
 			error: { code: "ambiguous_bridge" },
+			ok: false,
+			type: "tool.result",
+		});
+		await expect(
+			callDispatcherTool({ bridgeId: "missing-machine", tool: DEFAULT_TOOL }),
+		).resolves.toMatchObject({
+			error: { code: "missing_bridge" },
 			ok: false,
 			type: "tool.result",
 		});
@@ -103,17 +159,28 @@ describe("relay bridge selection errors", () => {
 		second.close();
 	});
 
-	it("rejects missing bridge selection", async () => {
-		const webSocket = await registerBridge();
-
-		await expect(
-			callLocalTool({ bridgeId: "missing-machine", tool: DEFAULT_TOOL }),
-		).resolves.toMatchObject({
-			error: { code: "missing_bridge" },
+	it("returns tool lookup and backend result errors through the dispatcher", async () => {
+		await expect(callDispatcherTool({ tool: DEFAULT_TOOL })).resolves.toMatchObject({
+			error: { code: "tool_not_found" },
 			ok: false,
 			type: "tool.result",
 		});
 
+		const webSocket = await registerBridge();
+		const call = callRawMcpTool("mikoto_call_tool", {
+			bridgeId: "dev-machine",
+			tool: DEFAULT_TOOL,
+		});
+		const request = JSON.parse(await waitForMessage(webSocket)) as { id: string };
+		sendToolSuccess(webSocket, request, { content: "invalid" });
+
+		const body = await call;
+		expect(body.result.isError).toBe(true);
+		expect(JSON.parse(body.result.content[0]?.text ?? "{}")).toMatchObject({
+			error: { code: "invalid_backend_result" },
+			ok: false,
+			type: "tool.result",
+		});
 		webSocket.close();
 	});
 });
@@ -121,11 +188,11 @@ describe("relay bridge selection errors", () => {
 describe("relay bridge in-flight calls", () => {
 	it("rejects a second in-flight call to the same bridge", async () => {
 		const webSocket = await registerBridge();
-		const first = callSuccessfulExposedTool(DEFAULT_TOOL, { bridgeId: "dev-machine" });
+		const first = callSuccessfulDispatcherTool({ bridgeId: "dev-machine", tool: DEFAULT_TOOL });
 		const request = JSON.parse(await waitForMessage(webSocket)) as { id: string };
 
 		await expect(
-			callLocalTool({ bridgeId: "dev-machine", tool: DEFAULT_TOOL }),
+			callDispatcherTool({ bridgeId: "dev-machine", tool: DEFAULT_TOOL }),
 		).resolves.toMatchObject({
 			error: { code: "bridge_busy" },
 			ok: false,
@@ -139,7 +206,7 @@ describe("relay bridge in-flight calls", () => {
 
 	it("rejects an in-flight call when the bridge disconnects", async () => {
 		const webSocket = await registerBridge();
-		const call = callLocalTool({ bridgeId: "dev-machine", tool: DEFAULT_TOOL });
+		const call = callDispatcherTool({ bridgeId: "dev-machine", tool: DEFAULT_TOOL });
 
 		await waitForMessage(webSocket);
 		webSocket.close();
