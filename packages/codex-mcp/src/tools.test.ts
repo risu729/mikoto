@@ -1,3 +1,6 @@
+import { chmod, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 
@@ -22,6 +25,26 @@ import { CODEX_MCP_TOOLS } from "./tools";
 
 const fakeAppServerPath = fileURLToPath(new URL("./fixtures/fake-app-server.ts", import.meta.url));
 const clients: CodexAppServerClient[] = [];
+const tempDirs: string[] = [];
+
+const createTempPathWithCommands = async (commands: readonly string[]): Promise<string> => {
+	const dir = await mkdtemp(join(tmpdir(), "mikoto-codex-path-"));
+	tempDirs.push(dir);
+
+	await Promise.all(
+		commands.map(async (command) => {
+			if (process.platform === "win32") {
+				await writeFile(join(dir, `${command}.cmd`), "@echo off\r\necho fake\r\n");
+			} else {
+				const path = join(dir, command);
+				await writeFile(path, "#!/bin/sh\necho fake\n");
+				await chmod(path, 0o755);
+			}
+		}),
+	);
+
+	return dir;
+};
 
 const createFakeClient = async (scenario = "success"): Promise<CodexAppServerClient> => {
 	const client = new CodexAppServerClient({
@@ -40,6 +63,7 @@ const createFakeClient = async (scenario = "success"): Promise<CodexAppServerCli
 
 afterEach(async () => {
 	await Promise.all(clients.splice(0).map((client) => client.close()));
+	await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { force: true, recursive: true })));
 });
 
 describe("codex MCP tool set", () => {
@@ -47,9 +71,23 @@ describe("codex MCP tool set", () => {
 		expect(CODEX_MCP_TOOLS.map((tool) => tool.name)).toEqual(["codex_task", "codex_chrome_read"]);
 	});
 
-	it("prefers mise and pins the bunx fallback package", () => {
-		expect(resolveCodexCommand(true).slice(0, 4)).toEqual(["mise", "x", "codex@latest", "--"]);
-		expect(resolveCodexCommand(false)).toEqual(["bunx", "codex@latest"]);
+	it("respects PATH before falling back to mise and bunx", async () => {
+		await expect(
+			resolveCodexCommand(await createTempPathWithCommands(["codex", "mise", "bunx"])),
+		).resolves.toEqual(["codex"]);
+		await expect(
+			resolveCodexCommand(await createTempPathWithCommands(["mise", "bunx"])),
+		).resolves.toEqual(["mise", "x", "codex@latest", "--", "codex"]);
+		await expect(resolveCodexCommand(await createTempPathWithCommands(["bunx"]))).resolves.toEqual([
+			"bunx",
+			"codex@latest",
+		]);
+	});
+
+	it("fails clearly when no Codex command fallback is available", async () => {
+		await expect(resolveCodexCommand(await createTempPathWithCommands([]))).rejects.toThrow(
+			"Unable to find Codex CLI",
+		);
 	});
 
 	it("documents fixed model defaults in code", () => {

@@ -89,6 +89,7 @@ type CodexAppServerCommand = {
 };
 type CodexCommandEnvironment = {
 	MIKOTO_CODEX_COMMAND?: string;
+	PATH?: string;
 };
 
 type CodexAppServerClientOptions = {
@@ -154,9 +155,10 @@ type TurnStartResponse = {
 const collectDeltaText = (pending: PendingTurn): string =>
 	[...pending.deltaTextByItemId.values()].join("");
 
-const commandExists = async (command: string): Promise<boolean> => {
+const commandExists = async (command: string, path = processEnv["PATH"]): Promise<boolean> => {
 	try {
 		const result = await execa(command, ["--version"], {
+			env: path === undefined ? {} : { PATH: path },
 			reject: false,
 			stderr: "ignore",
 			stdout: "ignore",
@@ -168,12 +170,22 @@ const commandExists = async (command: string): Promise<boolean> => {
 	}
 };
 
-const resolveCodexCommand = (hasMise = true): string[] => {
-	if (hasMise) {
+const resolveCodexCommand = async (path = processEnv["PATH"]): Promise<string[]> => {
+	if (await commandExists("codex", path)) {
+		return ["codex"];
+	}
+
+	if (await commandExists("mise", path)) {
 		return ["mise", "x", "codex@latest", "--", "codex"];
 	}
 
-	return ["bunx", "codex@latest"];
+	if (await commandExists("bunx", path)) {
+		return ["bunx", "codex@latest"];
+	}
+
+	throw new Error(
+		"Unable to find Codex CLI. Expected `codex` on PATH, `mise` for `mise x codex@latest`, or `bunx` for the Bun fallback.",
+	);
 };
 
 const parseCommandLine = (value: string): string[] => {
@@ -236,7 +248,7 @@ const resolveInstalledCodexCommand = async (
 		return parseConfiguredCodexCommand(configuredCommand);
 	}
 
-	const command = resolveCodexCommand(await commandExists("mise"));
+	const command = await resolveCodexCommand(environment.PATH);
 	const executable = command.at(0);
 
 	if (!executable) {
