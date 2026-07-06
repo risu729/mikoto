@@ -5,9 +5,10 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, describe, expect, it } from "vitest";
 
+import type { CodexRunOptions } from "./codex";
 import { CodexAppServerClient } from "./codex";
 import { createCodexMcpServer } from "./server";
-import { CodexTaskManager } from "./tasks";
+import { CodexTaskManager, DEFAULT_COMPLETED_TASK_TTL_MS } from "./tasks";
 import { CODEX_MCP_TOOLS } from "./tools";
 
 const fakeAppServerPath = fileURLToPath(new URL("./fixtures/fake-app-server.ts", import.meta.url));
@@ -27,6 +28,28 @@ const createFakeClient = async (scenario = "success"): Promise<CodexAppServerCli
 
 	return client;
 };
+
+const createRejectingRunClient = (): CodexAppServerClient =>
+	({
+		startRun: (_input: unknown, options: CodexRunOptions = {}) => {
+			options.onProgress?.({
+				deltaText: "partial",
+				items: [],
+				partialText: "partial",
+				status: "running",
+				threadId: "thread-1",
+				turnId: "turn-1",
+				warnings: [],
+			});
+
+			return Promise.resolve({
+				cancel: () => Promise.resolve(),
+				result: Promise.reject(new Error("fake handle failed")),
+				threadId: "thread-1",
+				turnId: "turn-1",
+			});
+		},
+	}) as unknown as CodexAppServerClient;
 
 const waitFor = async <Value>(
 	read: () => Value,
@@ -167,8 +190,68 @@ describe("CodexTaskManager cleanup", () => {
 	});
 });
 
+describe("CodexTaskManager TTL validation", () => {
+	it("falls back to the default completed task TTL when configured with an invalid TTL", async () => {
+		let now = 1_000;
+		const manager = new CodexTaskManager(await createFakeClient(), {
+			completedTaskTtlMs: -1,
+			idFactory: () => "task-1",
+			now: () => now,
+		});
+
+		manager.start("task", { prompt: "hi", toolKind: "task" });
+		await waitFor(
+			() => manager.result("task-1"),
+			(payload) => payload.ok,
+		);
+
+		now += DEFAULT_COMPLETED_TASK_TTL_MS - 1;
+
+		expect(manager.status("task-1")).toMatchObject({
+			ok: true,
+			task: { id: "task-1" },
+		});
+
+		now += 2;
+
+		expect(manager.status("task-1")).toMatchObject({
+			error: { code: "task_not_found" },
+			ok: false,
+		});
+	});
+});
+
+describe("CodexTaskManager failures", () => {
+	it("preserves known run ids on synthetic failed task results", async () => {
+		const manager = new CodexTaskManager(createRejectingRunClient(), {
+			idFactory: () => "task-1",
+		});
+
+		manager.start("task", { prompt: "hi", toolKind: "task" });
+
+		const result = await waitFor(
+			() => manager.result("task-1"),
+			(payload) => payload.ok && payload.result.status === "failed",
+		);
+
+		expect(result).toMatchObject({
+			ok: true,
+			result: {
+				error: "fake handle failed",
+				status: "failed",
+				threadId: "thread-1",
+				turnId: "turn-1",
+			},
+			task: {
+				threadId: "thread-1",
+				turnId: "turn-1",
+			},
+		});
+	});
+});
+
 describe("Codex async MCP server", () => {
-	it("registers the async fire-poll tool set", async () => {
+	it("registers the async fire-and-poll tool set", async () => {
 		const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
 		const mcpClient = new Client({ name: "test", version: "0.0.0" });
 		const server = await createCodexMcpServer({ client: await createFakeClient() });

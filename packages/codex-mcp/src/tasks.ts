@@ -92,6 +92,9 @@ const DEFAULT_COMPLETED_TASK_TTL_MS = 30 * 60 * 1000;
 
 const toIso = (timestampMs: number): string => new Date(timestampMs).toISOString();
 
+const normalizeCompletedTaskTtlMs = (value: number | undefined): number =>
+	is.number(value) && Number.isFinite(value) && value > 0 ? value : DEFAULT_COMPLETED_TASK_TTL_MS;
+
 const createTaskError = (
 	code: string,
 	message: string,
@@ -121,7 +124,7 @@ class CodexTaskManager {
 
 	constructor(client: CodexAppServerClient, options: CodexTaskManagerOptions = {}) {
 		this.#client = client;
-		this.#completedTaskTtlMs = options.completedTaskTtlMs ?? DEFAULT_COMPLETED_TASK_TTL_MS;
+		this.#completedTaskTtlMs = normalizeCompletedTaskTtlMs(options.completedTaskTtlMs);
 		this.#idFactory = options.idFactory ?? ((kind) => `${kind}_${crypto.randomUUID()}`);
 		this.#now = options.now ?? Date.now;
 	}
@@ -260,6 +263,8 @@ class CodexTaskManager {
 			items: task.items,
 			ok: false,
 			status: "failed",
+			...(task.threadId ? { threadId: task.threadId } : {}),
+			...(task.turnId ? { turnId: task.turnId } : {}),
 			warnings: task.warnings,
 		};
 		task.status = "failed";
@@ -336,7 +341,7 @@ class CodexTaskManager {
 	}
 }
 
-export { CodexTaskManager, DEFAULT_COMPLETED_TASK_TTL_MS };
+export { CodexTaskManager, DEFAULT_COMPLETED_TASK_TTL_MS, normalizeCompletedTaskTtlMs };
 export type {
 	CodexAsyncTaskPayload,
 	CodexAsyncTaskResultPayload,

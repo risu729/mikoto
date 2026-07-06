@@ -1,7 +1,8 @@
 # @mikoto/codex-mcp
 
-Standalone MCP server that exposes Codex as an asynchronous fire-poll tool
-surface for MCP clients.
+Standalone MCP server that exposes Codex as an asynchronous fire-and-poll tool
+surface for MCP clients. Tools are started and their progress and results are
+retrieved through later polling calls.
 
 The server does not expose synchronous Codex execution tools. Start tools return
 a task id quickly, shared run lifecycle tools return running state, partial

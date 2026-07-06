@@ -1,6 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import is from "@sindresorhus/is";
 import { z } from "zod";
 
 import type { CodexChromeReadInput } from "./chrome-read";
@@ -8,7 +7,7 @@ import { createChromeReadTaskInput, createReadOnlyTaskPrompt } from "./chrome-re
 import type { CodexRunInput } from "./codex";
 import { CodexAppServerClient, MAX_TOOL_TIMEOUT_MS } from "./codex";
 import type { CodexAsyncTaskPayload, CodexAsyncTaskResultPayload, JsonValue } from "./tasks";
-import { CodexTaskManager } from "./tasks";
+import { CodexTaskManager, normalizeCompletedTaskTtlMs } from "./tasks";
 import type { CodexMcpToolName } from "./tools";
 import { CODEX_MCP_TOOLS } from "./tools";
 
@@ -151,11 +150,10 @@ const createTaskManager = async (
 	options: CreateCodexMcpServerOptions,
 ): Promise<CodexTaskManager> => {
 	const client = options.client ?? (await CodexAppServerClient.create());
-	const taskOptions = is.number(options.completedTaskTtlMs)
-		? { completedTaskTtlMs: options.completedTaskTtlMs }
-		: {};
 
-	return new CodexTaskManager(client, taskOptions);
+	return new CodexTaskManager(client, {
+		completedTaskTtlMs: normalizeCompletedTaskTtlMs(options.completedTaskTtlMs),
+	});
 };
 
 const createCodexMcpServer = async (

@@ -440,6 +440,9 @@ const parseTurnId = (result: unknown): string => {
 
 	return result["turn"]["id"];
 };
+
+const isBrokenPipeError = (error: Error): boolean => isRecord(error) && error["code"] === "EPIPE";
+
 const createThreadStartParams = (input: CodexRunInput): JsonValue => {
 	const model = input.toolKind === "chrome_read" ? CODEX_CHROME_READ_MODEL : CODEX_TASK_MODEL;
 	const params: Record<string, JsonValue> = {
@@ -519,18 +522,19 @@ class CodexAppServerClient {
 		this.#child = child;
 		child.stderr?.on("data", (chunk) => this.#stderr.write(chunk));
 		child.once("exit", (code, signal) => {
-			const error = new Error(
-				`Codex app-server exited unexpectedly (${signal ? `signal ${signal}` : `code ${code}`})`,
-			);
+			const error = CodexAppServerClient.#createUnexpectedExitError(code, signal);
 
 			this.#closedError ??= error;
 			this.#rejectAll(error);
 		});
 		child.stdin?.on("error", (error) => {
 			const appServerError = is.error(error) ? error : new Error(String(error));
+			const closedError = isBrokenPipeError(appServerError)
+				? CodexAppServerClient.#createUnexpectedExitError(child.exitCode, child.signalCode)
+				: appServerError;
 
-			this.#closedError ??= appServerError;
-			this.#rejectAll(appServerError);
+			this.#closedError ??= closedError;
+			this.#rejectAll(closedError);
 		});
 
 		const lines = createInterface({ input: child.stdout });
@@ -737,6 +741,12 @@ class CodexAppServerClient {
 			...(options.turnId ? { turnId: options.turnId } : {}),
 			warnings: [],
 		};
+	}
+
+	static #createUnexpectedExitError(code: null | number, signal: NodeJS.Signals | null): Error {
+		return new Error(
+			`Codex app-server exited unexpectedly (${signal ? `signal ${signal}` : `code ${code}`})`,
+		);
 	}
 
 	#handleLine(line: string): void {

@@ -67,7 +67,7 @@ afterEach(async () => {
 });
 
 describe("codex MCP tool set", () => {
-	it("exposes async fire-poll Codex tools", () => {
+	it("exposes async fire-and-poll Codex tools", () => {
 		expect(CODEX_MCP_TOOLS.map((tool) => tool.name)).toEqual([
 			"codex_task_start",
 			"codex_chrome_read_start",
