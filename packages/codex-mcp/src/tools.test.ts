@@ -16,6 +16,7 @@ import {
 	CodexAppServerClient,
 	DEFAULT_TOOL_TIMEOUT_MS,
 	resolveCodexCommand,
+	resolveInstalledCodexCommand,
 } from "./codex";
 import { CODEX_MCP_TOOLS } from "./tools";
 
@@ -56,6 +57,46 @@ describe("codex MCP tool set", () => {
 		expect(CODEX_TASK_REASONING_EFFORT).toBe("medium");
 		expect(CODEX_CHROME_READ_MODEL).toBe("gpt-5.5");
 		expect(CODEX_CHROME_READ_REASONING_EFFORT).toBe("low");
+	});
+});
+
+describe("Codex command resolution", () => {
+	it("allows an explicit Codex command override", async () => {
+		await expect(
+			resolveInstalledCodexCommand({
+				MIKOTO_CODEX_COMMAND: "C:\\tools\\codex.exe",
+			}),
+		).resolves.toEqual({
+			args: [],
+			command: "C:\\tools\\codex.exe",
+		});
+	});
+
+	it("parses Codex command override arguments and quoted paths", async () => {
+		await expect(
+			resolveInstalledCodexCommand({
+				MIKOTO_CODEX_COMMAND: '"C:\\Program Files\\Codex\\codex.exe" --profile windows',
+			}),
+		).resolves.toEqual({
+			args: ["--profile", "windows"],
+			command: "C:\\Program Files\\Codex\\codex.exe",
+		});
+	});
+
+	it("rejects an empty Codex command override", async () => {
+		await expect(
+			resolveInstalledCodexCommand({
+				MIKOTO_CODEX_COMMAND: "   ",
+			}),
+		).rejects.toThrow("MIKOTO_CODEX_COMMAND must not be empty");
+	});
+
+	it("rejects a Codex command override with an unterminated quote", async () => {
+		await expect(
+			resolveInstalledCodexCommand({
+				MIKOTO_CODEX_COMMAND: '"C:\\Program Files\\Codex\\codex.exe',
+			}),
+		).rejects.toThrow("MIKOTO_CODEX_COMMAND contains an unterminated quote");
 	});
 });
 
