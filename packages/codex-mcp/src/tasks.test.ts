@@ -144,7 +144,7 @@ describe("CodexTaskManager cancellation", () => {
 			(payload) => payload.ok && payload.task.partialText === "partial",
 		);
 
-		await expect(manager.cancel("task-1")).resolves.toMatchObject({
+		expect(manager.cancel("task-1")).toMatchObject({
 			ok: true,
 			task: { cancelRequested: true },
 		});

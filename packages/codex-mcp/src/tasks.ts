@@ -184,7 +184,7 @@ class CodexTaskManager {
 		return { ok: true, result: task.result, task: this.#snapshot(task) };
 	}
 
-	async cancel(taskId: string): Promise<CodexAsyncTaskPayload> {
+	cancel(taskId: string): CodexAsyncTaskPayload {
 		this.#cleanup();
 
 		const task = this.#tasks.get(taskId);
@@ -197,7 +197,7 @@ class CodexTaskManager {
 
 		task.cancelRequested = true;
 		this.#touch(task);
-		await task.cancel?.();
+		this.#requestCancel(task);
 
 		return { ok: true, task: this.#snapshot(task) };
 	}
@@ -220,7 +220,7 @@ class CodexTaskManager {
 			task.turnId = handle.turnId;
 			this.#touch(task);
 			if (task.cancelRequested) {
-				await handle.cancel();
+				this.#requestCancel(task);
 			}
 
 			this.#complete(task, await handle.result);
@@ -269,6 +269,17 @@ class CodexTaskManager {
 		};
 		task.status = "failed";
 		task.updatedAtMs = now;
+	}
+
+	#requestCancel(task: CodexTaskState): void {
+		const cancelRequest = task.cancel?.();
+
+		cancelRequest?.catch((error: unknown) => {
+			const message = is.error(error) ? error.message : String(error);
+
+			task.warnings = [...task.warnings, `Cancel request failed: ${message}`];
+			this.#touch(task);
+		});
 	}
 
 	static #setRunIds(
