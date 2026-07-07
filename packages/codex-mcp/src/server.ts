@@ -6,13 +6,14 @@ import type { CodexChromeReadInput } from "./chrome-read";
 import { createChromeReadTaskInput, createReadOnlyTaskPrompt } from "./chrome-read";
 import type { CodexRunInput } from "./codex";
 import { CodexAppServerClient, MAX_TOOL_TIMEOUT_MS } from "./codex";
+import type { CodexAsyncTaskPayload, CodexAsyncTaskResultPayload, JsonValue } from "./tasks";
+import { CodexTaskManager, normalizeCompletedTaskTtlMs } from "./tasks";
 import type { CodexMcpToolName } from "./tools";
 import { CODEX_MCP_TOOLS } from "./tools";
 
-type JsonValue = boolean | JsonValue[] | null | number | string | { [key: string]: JsonValue };
-
 type CreateCodexMcpServerOptions = {
 	client?: CodexAppServerClient;
+	completedTaskTtlMs?: number;
 };
 
 const CodexTaskOptionSchema = {
@@ -20,26 +21,31 @@ const CodexTaskOptionSchema = {
 	timeoutMs: z.number().int().positive().max(MAX_TOOL_TIMEOUT_MS).optional(),
 };
 
-const CodexTaskInputSchema = z.object({
+const CodexTaskStartInputSchema = z.object({
 	...CodexTaskOptionSchema,
 	prompt: z.string().min(1),
 });
 
-const CodexChromeReadInputSchema = z.object({
+const CodexChromeReadStartInputSchema = z.object({
 	...CodexTaskOptionSchema,
 	request: z.string().min(1),
 });
 
-type CodexTaskToolInput = z.infer<typeof CodexTaskInputSchema>;
-type CodexChromeReadToolInput = z.infer<typeof CodexChromeReadInputSchema>;
+const CodexTaskIdInputSchema = z.object({
+	taskId: z.string().min(1),
+});
 
-const createJsonResult = (payload: JsonValue): CallToolResult => ({
+type CodexTaskStartToolInput = z.infer<typeof CodexTaskStartInputSchema>;
+type CodexChromeReadStartToolInput = z.infer<typeof CodexChromeReadStartInputSchema>;
+
+const createJsonResult = (payload: JsonValue, isError = false): CallToolResult => ({
 	content: [
 		{
 			text: JSON.stringify(payload),
 			type: "text",
 		},
 	],
+	isError,
 });
 
 const findToolDescription = (name: CodexMcpToolName): string => {
@@ -48,7 +54,7 @@ const findToolDescription = (name: CodexMcpToolName): string => {
 	return tool?.description ?? "";
 };
 
-const normalizeTaskInput = (input: CodexTaskToolInput): CodexRunInput => {
+const normalizeTaskInput = (input: CodexTaskStartToolInput): CodexRunInput => {
 	const taskInput: CodexRunInput = {
 		prompt: createReadOnlyTaskPrompt(input.prompt),
 		toolKind: "task",
@@ -64,7 +70,7 @@ const normalizeTaskInput = (input: CodexTaskToolInput): CodexRunInput => {
 	return taskInput;
 };
 
-const normalizeChromeReadInput = (input: CodexChromeReadToolInput): CodexChromeReadInput => {
+const normalizeChromeReadInput = (input: CodexChromeReadStartToolInput): CodexChromeReadInput => {
 	const chromeReadInput: CodexChromeReadInput = {
 		request: input.request,
 	};
@@ -79,10 +85,76 @@ const normalizeChromeReadInput = (input: CodexChromeReadToolInput): CodexChromeR
 	return chromeReadInput;
 };
 
-const runChromeReadTask = async (
-	client: CodexAppServerClient,
-	input: CodexChromeReadInput,
-): Promise<CallToolResult> => createJsonResult(await client.run(createChromeReadTaskInput(input)));
+const createPayloadResult = (
+	payload: CodexAsyncTaskPayload | CodexAsyncTaskResultPayload,
+): CallToolResult => createJsonResult(payload, !payload.ok);
+
+const registerTaskTools = (server: McpServer, tasks: CodexTaskManager): void => {
+	server.registerTool(
+		"codex_task_start",
+		{
+			description: findToolDescription("codex_task_start"),
+			inputSchema: CodexTaskStartInputSchema,
+			title: "Start Codex Task",
+		},
+		(input) => createPayloadResult(tasks.start("task", normalizeTaskInput(input))),
+	);
+};
+
+const registerChromeReadTools = (server: McpServer, tasks: CodexTaskManager): void => {
+	server.registerTool(
+		"codex_chrome_read_start",
+		{
+			description: findToolDescription("codex_chrome_read_start"),
+			inputSchema: CodexChromeReadStartInputSchema,
+			title: "Start Browser Read With Codex",
+		},
+		(input) =>
+			createPayloadResult(
+				tasks.start("chrome_read", createChromeReadTaskInput(normalizeChromeReadInput(input))),
+			),
+	);
+};
+
+const registerRunTools = (server: McpServer, tasks: CodexTaskManager): void => {
+	server.registerTool(
+		"codex_run_status",
+		{
+			description: findToolDescription("codex_run_status"),
+			inputSchema: CodexTaskIdInputSchema,
+			title: "Check Codex Run",
+		},
+		(input) => createPayloadResult(tasks.status(input.taskId)),
+	);
+	server.registerTool(
+		"codex_run_result",
+		{
+			description: findToolDescription("codex_run_result"),
+			inputSchema: CodexTaskIdInputSchema,
+			title: "Get Codex Run Result",
+		},
+		(input) => createPayloadResult(tasks.result(input.taskId)),
+	);
+	server.registerTool(
+		"codex_run_cancel",
+		{
+			description: findToolDescription("codex_run_cancel"),
+			inputSchema: CodexTaskIdInputSchema,
+			title: "Cancel Codex Run",
+		},
+		async (input) => createPayloadResult(await tasks.cancel(input.taskId)),
+	);
+};
+
+const createTaskManager = async (
+	options: CreateCodexMcpServerOptions,
+): Promise<CodexTaskManager> => {
+	const client = options.client ?? (await CodexAppServerClient.create());
+
+	return new CodexTaskManager(client, {
+		completedTaskTtlMs: normalizeCompletedTaskTtlMs(options.completedTaskTtlMs),
+	});
+};
 
 const createCodexMcpServer = async (
 	options: CreateCodexMcpServerOptions = {},
@@ -91,28 +163,18 @@ const createCodexMcpServer = async (
 		name: "mikoto-codex-mcp",
 		version: "0.0.0",
 	});
-	const client = options.client ?? (await CodexAppServerClient.create());
+	const tasks = await createTaskManager(options);
 
-	server.registerTool(
-		"codex_task",
-		{
-			description: findToolDescription("codex_task"),
-			inputSchema: CodexTaskInputSchema,
-			title: "Run Codex Task",
-		},
-		async (input) => createJsonResult(await client.run(normalizeTaskInput(input))),
-	);
-	server.registerTool(
-		"codex_chrome_read",
-		{
-			description: findToolDescription("codex_chrome_read"),
-			inputSchema: CodexChromeReadInputSchema,
-			title: "Read Browser With Codex",
-		},
-		(input) => runChromeReadTask(client, normalizeChromeReadInput(input)),
-	);
+	registerTaskTools(server, tasks);
+	registerChromeReadTools(server, tasks);
+	registerRunTools(server, tasks);
 
 	return server;
 };
 
-export { CodexChromeReadInputSchema, CodexTaskInputSchema, createCodexMcpServer };
+export {
+	CodexChromeReadStartInputSchema,
+	CodexTaskIdInputSchema,
+	CodexTaskStartInputSchema,
+	createCodexMcpServer,
+};

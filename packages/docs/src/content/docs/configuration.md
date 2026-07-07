@@ -19,8 +19,8 @@ command = "bun"
 args = ["packages/codex-mcp/src/index.ts"]
 
 [[servers.aliases]]
-name = "local_chrome_read"
-target = "codex.codex_chrome_read"
+name = "local_chrome_read_start"
+target = "codex.codex_chrome_read_start"
 ```
 
 ## Supported Fields
@@ -37,7 +37,8 @@ target = "codex.codex_chrome_read"
 Configured backend MCP servers are discovered by default. Their metadata is
 visible through `mikoto_list_bridges`, and ChatGPT invokes them through
 `mikoto_call_tool`. Tool names are prefixed with the backend id, so backend tool
-`codex_chrome_read` from server `codex` becomes `codex.codex_chrome_read`.
+`codex_chrome_read_start` from server `codex` becomes
+`codex.codex_chrome_read_start`.
 The relay keeps its ChatGPT-facing tool names fixed because ChatGPT Apps may not
 make newly advertised MCP tools callable inside an existing app session.
 

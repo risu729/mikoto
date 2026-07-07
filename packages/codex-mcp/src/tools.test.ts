@@ -67,8 +67,14 @@ afterEach(async () => {
 });
 
 describe("codex MCP tool set", () => {
-	it("exposes direct-result Codex tools", () => {
-		expect(CODEX_MCP_TOOLS.map((tool) => tool.name)).toEqual(["codex_task", "codex_chrome_read"]);
+	it("exposes async fire-and-poll Codex tools", () => {
+		expect(CODEX_MCP_TOOLS.map((tool) => tool.name)).toEqual([
+			"codex_task_start",
+			"codex_chrome_read_start",
+			"codex_run_status",
+			"codex_run_result",
+			"codex_run_cancel",
+		]);
 	});
 
 	it("respects PATH before falling back to mise and bunx", async () => {

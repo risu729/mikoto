@@ -1,8 +1,9 @@
-// oxlint-disable eslint/complexity eslint/max-lines eslint/max-lines-per-function eslint/max-statements eslint/no-undefined promise/avoid-new -- App-server JSON-RPC handling is intentionally centralized and callback-driven.
+// oxlint-disable eslint/complexity eslint/max-lines eslint/max-lines-per-function eslint/max-statements eslint/no-shadow eslint/no-undefined promise/avoid-new promise/prefer-await-to-callbacks promise/prefer-await-to-then -- App-server JSON-RPC handling is intentionally centralized and callback-driven.
 import { spawn } from "node:child_process";
 import { env as processEnv } from "node:process";
 import { createInterface } from "node:readline";
 
+import is from "@sindresorhus/is";
 import { execa } from "execa";
 import { DateTime } from "luxon";
 
@@ -21,6 +22,7 @@ type JsonValue = boolean | JsonValue[] | null | number | string | { [key: string
 type RequestId = number | string;
 type CodexToolKind = "chrome_read" | "task";
 type CodexRunStatus = "completed" | "failed" | "interrupted" | "timed_out";
+type CodexTaskStatus = "running" | CodexRunStatus;
 type NormalizedCodexItem =
 	| {
 			id?: string;
@@ -82,6 +84,24 @@ type CodexRunResult = {
 	turnId?: string;
 	warnings: string[];
 };
+type CodexRunProgress = {
+	deltaText: string;
+	items: NormalizedCodexItem[];
+	partialText: string;
+	status: "running";
+	threadId: string;
+	turnId: string;
+	warnings: string[];
+};
+type CodexRunHandle = {
+	cancel: () => Promise<void>;
+	result: Promise<CodexRunResult>;
+	threadId: string;
+	turnId: string;
+};
+type CodexRunOptions = {
+	onProgress?: (progress: CodexRunProgress) => void;
+};
 
 type CodexAppServerCommand = {
 	args: string[];
@@ -126,6 +146,7 @@ type PendingRequest = {
 type PendingTurn = {
 	deltaTextByItemId: Map<string, string>;
 	items: NormalizedCodexItem[];
+	onProgress?: (progress: CodexRunProgress) => void;
 	reject: (error: Error) => void;
 	resolve: (result: CompletedTurn) => void;
 	threadId: string;
@@ -158,7 +179,7 @@ const collectDeltaText = (pending: PendingTurn): string =>
 const commandExists = async (command: string, path = processEnv["PATH"]): Promise<boolean> => {
 	try {
 		const result = await execa(command, ["--version"], {
-			env: path === undefined ? {} : { PATH: path },
+			env: is.undefined(path) ? {} : { PATH: path },
 			reject: false,
 			stderr: "ignore",
 			stdout: "ignore",
@@ -244,7 +265,7 @@ const resolveInstalledCodexCommand = async (
 	environment: CodexCommandEnvironment = processEnv,
 ): Promise<CodexAppServerCommand> => {
 	const configuredCommand = environment.MIKOTO_CODEX_COMMAND;
-	if (configuredCommand !== undefined) {
+	if (!is.undefined(configuredCommand)) {
 		return parseConfiguredCodexCommand(configuredCommand);
 	}
 
@@ -269,14 +290,11 @@ const normalizeTimeoutMs = (timeoutMs: number | undefined): number => {
 	return Math.min(timeoutMs, MAX_TOOL_TIMEOUT_MS);
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === "object" && value !== null && !Array.isArray(value);
+const isRecord = (value: unknown): value is Record<string, unknown> => is.plainObject(value);
 
-const getString = (value: unknown, fallback = ""): string =>
-	typeof value === "string" ? value : fallback;
+const getString = (value: unknown, fallback = ""): string => (is.string(value) ? value : fallback);
 
-const getNumberOrNull = (value: unknown): null | number =>
-	typeof value === "number" ? value : null;
+const getNumberOrNull = (value: unknown): null | number => (is.number(value) ? value : null);
 
 const truncateText = (value: string): string => {
 	if (Buffer.byteLength(value) <= MAX_ITEM_TEXT_BYTES) {
@@ -323,11 +341,11 @@ const normalizeItem = (item: unknown): NormalizedCodexItem | undefined => {
 			return normalized;
 		}
 		case "reasoning": {
-			const summary = Array.isArray(item["summary"])
-				? item["summary"].filter((part): part is string => typeof part === "string")
+			const summary = is.array(item["summary"])
+				? item["summary"].filter((part): part is string => is.string(part))
 				: [];
-			const content = Array.isArray(item["content"])
-				? item["content"].filter((part): part is string => typeof part === "string")
+			const content = is.array(item["content"])
+				? item["content"].filter((part): part is string => is.string(part))
 				: [];
 
 			const normalized: NormalizedCodexItem = {
@@ -408,11 +426,7 @@ const normalizeItem = (item: unknown): NormalizedCodexItem | undefined => {
 };
 
 const parseThreadId = (result: unknown): string => {
-	if (
-		!isRecord(result) ||
-		!isRecord(result["thread"]) ||
-		typeof result["thread"]["id"] !== "string"
-	) {
+	if (!isRecord(result) || !isRecord(result["thread"]) || !is.string(result["thread"]["id"])) {
 		throw new Error("Codex app-server returned thread/start without a thread id");
 	}
 
@@ -420,12 +434,15 @@ const parseThreadId = (result: unknown): string => {
 };
 
 const parseTurnId = (result: unknown): string => {
-	if (!isRecord(result) || !isRecord(result["turn"]) || typeof result["turn"]["id"] !== "string") {
+	if (!isRecord(result) || !isRecord(result["turn"]) || !is.string(result["turn"]["id"])) {
 		throw new Error("Codex app-server returned turn/start without a turn id");
 	}
 
 	return result["turn"]["id"];
 };
+
+const isBrokenPipeError = (error: Error): boolean => isRecord(error) && error["code"] === "EPIPE";
+
 const createThreadStartParams = (input: CodexRunInput): JsonValue => {
 	const model = input.toolKind === "chrome_read" ? CODEX_CHROME_READ_MODEL : CODEX_TASK_MODEL;
 	const params: Record<string, JsonValue> = {
@@ -505,18 +522,19 @@ class CodexAppServerClient {
 		this.#child = child;
 		child.stderr?.on("data", (chunk) => this.#stderr.write(chunk));
 		child.once("exit", (code, signal) => {
-			const error = new Error(
-				`Codex app-server exited unexpectedly (${signal ? `signal ${signal}` : `code ${code}`})`,
-			);
+			const error = CodexAppServerClient.#createUnexpectedExitError(code, signal);
 
 			this.#closedError ??= error;
 			this.#rejectAll(error);
 		});
 		child.stdin?.on("error", (error) => {
-			const appServerError = error instanceof Error ? error : new Error(String(error));
+			const appServerError = is.error(error) ? error : new Error(String(error));
+			const closedError = isBrokenPipeError(appServerError)
+				? CodexAppServerClient.#createUnexpectedExitError(child.exitCode, child.signalCode)
+				: appServerError;
 
-			this.#closedError ??= appServerError;
-			this.#rejectAll(appServerError);
+			this.#closedError ??= closedError;
+			this.#rejectAll(closedError);
 		});
 
 		const lines = createInterface({ input: child.stdout });
@@ -549,94 +567,116 @@ class CodexAppServerClient {
 
 	async run(input: CodexRunInput): Promise<CodexRunResult> {
 		const startedAt = DateTime.utc();
+
+		try {
+			const handle = await this.#startRun(input, {}, startedAt);
+
+			return await handle.result;
+		} catch (error) {
+			return CodexAppServerClient.#createFailedRunResult(startedAt, error);
+		}
+	}
+
+	async startRun(input: CodexRunInput, options: CodexRunOptions = {}): Promise<CodexRunHandle> {
+		return await this.#startRun(input, options, DateTime.utc());
+	}
+
+	async #startRun(
+		input: CodexRunInput,
+		options: CodexRunOptions,
+		startedAt: DateTime,
+	): Promise<CodexRunHandle> {
 		const timeoutMs = normalizeTimeoutMs(input.timeoutMs);
-		let threadId = "";
-		let turnId = "";
 		let timeout: null | ReturnType<typeof setTimeout> = null;
 		let timedOut = false;
 
-		try {
-			const thread = await this.#request("thread/start", createThreadStartParams(input));
+		const thread = await this.#request("thread/start", createThreadStartParams(input));
+		const threadId = parseThreadId(thread as ThreadStartResponse);
+		const turn = await this.#request("turn/start", createTurnStartParams(input, threadId));
+		const turnId = parseTurnId(turn as TurnStartResponse);
 
-			threadId = parseThreadId(thread as ThreadStartResponse);
-			const turn = await this.#request("turn/start", createTurnStartParams(input, threadId));
-
-			turnId = parseTurnId(turn as TurnStartResponse);
-			const activeThreadId = threadId;
-			const activeTurnId = turnId;
-
-			const completed = await new Promise<CompletedTurn>((resolve, reject) => {
-				const pending: PendingTurn = {
-					deltaTextByItemId: new Map(),
-					items: [],
-					reject,
-					resolve,
-					threadId: activeThreadId,
-					turnId: activeTurnId,
-					warnings: [],
-				};
-
-				this.#pendingTurns.set(activeTurnId, pending);
-				timeout = setTimeout(() => {
-					timedOut = true;
-					this.#pendingTurns.delete(activeTurnId);
-					this.#interruptTurn(activeThreadId, activeTurnId).catch(() => {
-						// Timeout results should still return even if interruption fails.
-					});
-					resolve({
-						deltaText: collectDeltaText(pending),
-						items: pending.items,
-						status: "timed_out",
-						warnings: pending.warnings,
-					});
-				}, timeoutMs);
-				const queuedNotifications = this.#queuedTurnNotifications.get(activeTurnId) ?? [];
-
-				this.#queuedTurnNotifications.delete(activeTurnId);
-				for (const notification of queuedNotifications) {
-					this.#handleNotification(notification);
-				}
-			});
-			const finalText = CodexAppServerClient.#createFinalText(
-				completed.items,
-				completed.deltaText,
-				completed.warnings,
-			);
-			const status = timedOut ? "timed_out" : completed.status;
-			const result: CodexRunResult = {
-				durationMs: getDurationMs(startedAt),
-				finalText,
-				items: completed.items,
-				ok: status === "completed",
-				status,
-				warnings: completed.warnings,
-			};
-
-			if (threadId) {
-				result.threadId = threadId;
-			}
-			if (turnId) {
-				result.turnId = turnId;
-			}
-
-			return result;
-		} catch (error) {
-			return {
-				durationMs: getDurationMs(startedAt),
-				error: error instanceof Error ? error.message : String(error),
-				finalText: "",
+		const result = new Promise<CompletedTurn>((resolve, reject) => {
+			const pending: PendingTurn = {
+				deltaTextByItemId: new Map(),
 				items: [],
-				ok: false,
-				status: timedOut ? "timed_out" : "failed",
-				...(threadId ? { threadId } : {}),
-				...(turnId ? { turnId } : {}),
+				reject,
+				resolve,
+				threadId,
+				turnId,
 				warnings: [],
 			};
-		} finally {
-			if (timeout) {
-				clearTimeout(timeout);
+			if (options.onProgress) {
+				pending.onProgress = options.onProgress;
 			}
-		}
+
+			this.#pendingTurns.set(turnId, pending);
+			timeout = setTimeout(() => {
+				timedOut = true;
+				this.#pendingTurns.delete(turnId);
+				this.#interruptTurn(threadId, turnId).catch(() => {
+					// Timeout results should still return even if interruption fails.
+				});
+				resolve({
+					deltaText: collectDeltaText(pending),
+					items: pending.items,
+					status: "timed_out",
+					warnings: pending.warnings,
+				});
+			}, timeoutMs);
+			CodexAppServerClient.#emitProgress(pending);
+			const queuedNotifications = this.#queuedTurnNotifications.get(turnId) ?? [];
+
+			this.#queuedTurnNotifications.delete(turnId);
+			for (const notification of queuedNotifications) {
+				this.#handleNotification(notification);
+			}
+		})
+			.then((completed) => {
+				const finalText = CodexAppServerClient.#createFinalText(
+					completed.items,
+					completed.deltaText,
+					completed.warnings,
+				);
+				const status = timedOut ? "timed_out" : completed.status;
+				const result: CodexRunResult = {
+					durationMs: getDurationMs(startedAt),
+					finalText,
+					items: completed.items,
+					ok: status === "completed",
+					status,
+					warnings: completed.warnings,
+				};
+
+				if (threadId) {
+					result.threadId = threadId;
+				}
+				if (turnId) {
+					result.turnId = turnId;
+				}
+
+				return result;
+			})
+			.catch((error: unknown) =>
+				CodexAppServerClient.#createFailedRunResult(startedAt, error, {
+					status: timedOut ? "timed_out" : "failed",
+					threadId,
+					turnId,
+				}),
+			)
+			.finally(() => {
+				if (timeout) {
+					clearTimeout(timeout);
+				}
+			});
+
+		return {
+			cancel: async () => {
+				await this.#interruptTurn(threadId, turnId);
+			},
+			result,
+			threadId,
+			turnId,
+		};
 	}
 
 	async #interruptTurn(threadId: string, turnId: string): Promise<void> {
@@ -671,6 +711,44 @@ class CodexAppServerClient {
 		return deltaText;
 	}
 
+	static #createPartialText(items: NormalizedCodexItem[], deltaText: string): string {
+		const completedMessages = items.filter(
+			(item): item is Extract<NormalizedCodexItem, { type: "agent_message" }> =>
+				item.type === "agent_message",
+		);
+		const finalMessage = completedMessages.at(-1);
+
+		return finalMessage?.text || deltaText;
+	}
+
+	static #createFailedRunResult(
+		startedAt: DateTime,
+		error: unknown,
+		options: {
+			status?: CodexRunStatus;
+			threadId?: string;
+			turnId?: string;
+		} = {},
+	): CodexRunResult {
+		return {
+			durationMs: getDurationMs(startedAt),
+			error: is.error(error) ? error.message : String(error),
+			finalText: "",
+			items: [],
+			ok: false,
+			status: options.status ?? "failed",
+			...(options.threadId ? { threadId: options.threadId } : {}),
+			...(options.turnId ? { turnId: options.turnId } : {}),
+			warnings: [],
+		};
+	}
+
+	static #createUnexpectedExitError(code: null | number, signal: NodeJS.Signals | null): Error {
+		return new Error(
+			`Codex app-server exited unexpectedly (${signal ? `signal ${signal}` : `code ${code}`})`,
+		);
+	}
+
 	#handleLine(line: string): void {
 		try {
 			const message = JSON.parse(line) as unknown;
@@ -685,7 +763,7 @@ class CodexAppServerClient {
 				return;
 			}
 
-			if (typeof message["method"] === "string") {
+			if (is.string(message["method"])) {
 				this.#handleNotification(message as JsonRpcNotification);
 			}
 		} catch {
@@ -748,11 +826,11 @@ class CodexAppServerClient {
 			return undefined;
 		}
 
-		if (typeof params["turnId"] === "string") {
+		if (is.string(params["turnId"])) {
 			return params["turnId"];
 		}
 
-		if (isRecord(params["turn"]) && typeof params["turn"]["id"] === "string") {
+		if (isRecord(params["turn"]) && is.string(params["turn"]["id"])) {
 			return params["turn"]["id"];
 		}
 
@@ -762,9 +840,9 @@ class CodexAppServerClient {
 	#handleAgentMessageDelta(params: unknown): void {
 		if (
 			!isRecord(params) ||
-			typeof params["turnId"] !== "string" ||
-			typeof params["itemId"] !== "string" ||
-			typeof params["delta"] !== "string"
+			!is.string(params["turnId"]) ||
+			!is.string(params["itemId"]) ||
+			!is.string(params["delta"])
 		) {
 			return;
 		}
@@ -779,10 +857,11 @@ class CodexAppServerClient {
 			params["itemId"],
 			`${pending.deltaTextByItemId.get(params["itemId"]) ?? ""}${params["delta"]}`,
 		);
+		CodexAppServerClient.#emitProgress(pending);
 	}
 
 	#handleItemCompleted(params: unknown): void {
-		if (!isRecord(params) || typeof params["turnId"] !== "string") {
+		if (!isRecord(params) || !is.string(params["turnId"])) {
 			return;
 		}
 
@@ -796,11 +875,12 @@ class CodexAppServerClient {
 
 		if (item) {
 			pending.items.push(item);
+			CodexAppServerClient.#emitProgress(pending);
 		}
 	}
 
 	#handleTurnCompleted(params: unknown): void {
-		if (!isRecord(params) || typeof params["threadId"] !== "string") {
+		if (!isRecord(params) || !is.string(params["threadId"])) {
 			return;
 		}
 
@@ -827,7 +907,7 @@ class CodexAppServerClient {
 	}
 
 	#handleTurnError(params: unknown): void {
-		if (!isRecord(params) || typeof params["turnId"] !== "string") {
+		if (!isRecord(params) || !is.string(params["turnId"])) {
 			return;
 		}
 
@@ -851,7 +931,21 @@ class CodexAppServerClient {
 	}
 
 	#notify(method: string, params?: unknown): void {
-		this.#write({ method, ...(params === undefined ? {} : { params }) });
+		this.#write({ method, ...(is.undefined(params) ? {} : { params }) });
+	}
+
+	static #emitProgress(pending: PendingTurn): void {
+		const deltaText = collectDeltaText(pending);
+
+		pending.onProgress?.({
+			deltaText,
+			items: [...pending.items],
+			partialText: CodexAppServerClient.#createPartialText(pending.items, deltaText),
+			status: "running",
+			threadId: pending.threadId,
+			turnId: pending.turnId,
+			warnings: [...pending.warnings],
+		});
 	}
 
 	#rejectAll(error: Error): void {
@@ -877,7 +971,7 @@ class CodexAppServerClient {
 
 		return new Promise((resolve, reject) => {
 			this.#pendingRequests.set(id, { reject, resolve });
-			this.#write({ id, method, ...(params === undefined ? {} : { params }) });
+			this.#write({ id, method, ...(is.undefined(params) ? {} : { params }) });
 		});
 	}
 
@@ -907,8 +1001,13 @@ export {
 export type {
 	CodexAppServerClientOptions,
 	CodexAppServerCommand,
+	CodexRunHandle,
 	CodexRunInput,
+	CodexRunOptions,
+	CodexRunProgress,
 	CodexRunResult,
+	CodexRunStatus,
+	CodexTaskStatus,
 	CodexToolKind,
 	NormalizedCodexItem,
 };

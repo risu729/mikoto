@@ -12,5 +12,5 @@ command = "bun"
 args = ["packages/codex-mcp/src/index.ts"]
 
 [[servers.aliases]]
-name = "local_chrome_read"
-target = "codex.codex_chrome_read"
+name = "local_chrome_read_start"
+target = "codex.codex_chrome_read_start"

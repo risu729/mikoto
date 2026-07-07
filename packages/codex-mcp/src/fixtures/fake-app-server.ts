@@ -1,5 +1,7 @@
 import { createInterface } from "node:readline";
 
+import is from "@sindresorhus/is";
+
 const scenario = process.argv[2] ?? "success";
 
 const write = (message: unknown): void => {
@@ -17,7 +19,7 @@ const fail = (id: string | number, message: string): void => {
 type FakeRequest = {
 	id?: number | string;
 	method: string;
-	params?: { threadId?: string };
+	params?: { threadId?: string; turnId?: string };
 };
 
 const handleInitialize = (id: number | string): void => {
@@ -80,7 +82,10 @@ const emitTurnFailure = (threadId: string): void => {
 	});
 };
 
-const emitTurnCompleted = (threadId: string): void => {
+const emitTurnCompletedWithStatus = (
+	threadId: string,
+	status: "completed" | "interrupted",
+): void => {
 	write({
 		method: "turn/completed",
 		params: {
@@ -93,10 +98,14 @@ const emitTurnCompleted = (threadId: string): void => {
 				items: [],
 				itemsView: "full",
 				startedAt: 1,
-				status: "completed",
+				status,
 			},
 		},
 	});
+};
+
+const emitTurnCompleted = (threadId: string): void => {
+	emitTurnCompletedWithStatus(threadId, "completed");
 };
 
 const emitTurnSuccess = (threadId: string): void => {
@@ -130,6 +139,7 @@ const emitTimeoutTurn = (threadId: string): void => {
 
 const turnScenarioHandlers: Record<string, TurnScenarioHandler> = {
 	"delta-completed-no-item": emitDeltaOnlyTurnSuccess,
+	"interrupt-completes": emitTimeoutTurn,
 	"timeout-never-completes": emitTimeoutTurn,
 	"turn-failed": emitTurnFailure,
 };
@@ -147,7 +157,7 @@ const handleRequest = (request: FakeRequest): void => {
 		return;
 	}
 
-	if (typeof request.id !== "number" && typeof request.id !== "string") {
+	if (!is.number(request.id) && !is.string(request.id)) {
 		return;
 	}
 
@@ -162,6 +172,9 @@ const handleRequest = (request: FakeRequest): void => {
 			handleTurnStart(request as FakeRequest & { id: number | string });
 			break;
 		case "turn/interrupt":
+			if (scenario === "interrupt-completes") {
+				emitTurnCompletedWithStatus(request.params?.threadId ?? "thread-1", "interrupted");
+			}
 			respond(request.id, {});
 			break;
 		default:
