@@ -1,6 +1,73 @@
+import Ajv2020 from "ajv/dist/2020";
 import { describe, expect, it } from "vitest";
 
+import docsSchema from "../../../packages/docs/public/schemas/mikoto.schema.json" with { type: "json" };
+import rootSchema from "../../../schemas/mikoto.schema.json" with { type: "json" };
 import { BackendServerSchema, MikotoConfigSchema } from "./config";
+
+const validConfigs = [
+	[
+		"stdio backend",
+		{
+			relay: { url: "ws://localhost:8787/bridge" },
+			servers: [
+				{
+					args: ["packages/codex-mcp/src/index.ts"],
+					command: "bun",
+					cwd: ".",
+					env: { MIKOTO_BRIDGE_ID: "dev-machine" },
+					id: "codex",
+					transport: "stdio",
+				},
+			],
+		},
+	],
+	[
+		"http backend",
+		{
+			relay: { url: "wss://relay.example.com/bridge" },
+			servers: [
+				{
+					aliases: [
+						{
+							name: "local_chrome_read_start",
+							target: "codex.codex_chrome_read_start",
+						},
+					],
+					id: "remote",
+					transport: "http",
+					url: "https://example.com/mcp",
+				},
+			],
+		},
+	],
+] as const;
+
+const invalidConfigs = [
+	["unknown root key", { extra: true, relay: { url: "ws://localhost:8787/bridge" } }],
+	["invalid relay URL", { relay: { url: "https://localhost:8787/bridge" } }],
+	[
+		"invalid backend id",
+		{
+			relay: { url: "ws://localhost:8787/bridge" },
+			servers: [{ command: "bun", id: "codex server", transport: "stdio" }],
+		},
+	],
+	[
+		"invalid http backend URL",
+		{
+			relay: { url: "ws://localhost:8787/bridge" },
+			servers: [{ id: "remote", transport: "http", url: "ws://example.com/mcp" }],
+		},
+	],
+	[
+		"unknown backend field",
+		{
+			relay: { url: "ws://localhost:8787/bridge" },
+			servers: [{ command: "bun", id: "codex", timeoutMs: 1000, transport: "stdio" }],
+		},
+	],
+] as const;
 
 describe("MikotoConfigSchema stdio backends", () => {
 	it("accepts stdio backend configuration", () => {
@@ -83,5 +150,24 @@ describe("MikotoConfigSchema validation", () => {
 		});
 
 		expect(result.success).toBe(false);
+	});
+});
+
+describe("published mikoto.toml JSON Schema", () => {
+	const ajv = new Ajv2020();
+	const validateConfig = ajv.compile(rootSchema);
+
+	it("publishes the same schema through the docs site", () => {
+		expect(docsSchema).toEqual(rootSchema);
+	});
+
+	it.each(validConfigs)("accepts valid %s config like the runtime parser", (_name, config) => {
+		expect(MikotoConfigSchema.safeParse(config).success).toBe(true);
+		expect(validateConfig(config)).toBe(true);
+	});
+
+	it.each(invalidConfigs)("rejects %s like the runtime parser", (_name, config) => {
+		expect(MikotoConfigSchema.safeParse(config).success).toBe(false);
+		expect(validateConfig(config)).toBe(false);
 	});
 });
