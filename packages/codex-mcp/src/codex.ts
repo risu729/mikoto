@@ -106,9 +106,11 @@ type CodexRunOptions = {
 type CodexAppServerCommand = {
 	args: string[];
 	command: string;
+	cwd?: string;
 };
 type CodexCommandEnvironment = {
 	MIKOTO_CODEX_COMMAND?: string;
+	MIKOTO_CODEX_COMMAND_CWD?: string;
 	PATH?: string;
 };
 
@@ -245,11 +247,17 @@ const parseCommandLine = (value: string): string[] => {
 	return args;
 };
 
-const parseConfiguredCodexCommand = (value: string): CodexAppServerCommand => {
+const parseConfiguredCodexCommand = (
+	value: string,
+	cwd: string | undefined,
+): CodexAppServerCommand => {
 	const trimmed = value.trim();
 
 	if (!trimmed) {
 		throw new Error("MIKOTO_CODEX_COMMAND must not be empty");
+	}
+	if (!is.undefined(cwd) && !cwd.trim()) {
+		throw new Error("MIKOTO_CODEX_COMMAND_CWD must not be empty");
 	}
 
 	const [command = "", ...args] = parseCommandLine(trimmed);
@@ -258,7 +266,11 @@ const parseConfiguredCodexCommand = (value: string): CodexAppServerCommand => {
 		throw new Error("MIKOTO_CODEX_COMMAND must include a command");
 	}
 
-	return { args, command };
+	return {
+		args,
+		command,
+		...(is.undefined(cwd) ? {} : { cwd }),
+	};
 };
 
 const resolveInstalledCodexCommand = async (
@@ -266,7 +278,7 @@ const resolveInstalledCodexCommand = async (
 ): Promise<CodexAppServerCommand> => {
 	const configuredCommand = environment.MIKOTO_CODEX_COMMAND;
 	if (!is.undefined(configuredCommand)) {
-		return parseConfiguredCodexCommand(configuredCommand);
+		return parseConfiguredCodexCommand(configuredCommand, environment.MIKOTO_CODEX_COMMAND_CWD);
 	}
 
 	const command = await resolveCodexCommand(environment.PATH);
@@ -443,10 +455,20 @@ const parseTurnId = (result: unknown): string => {
 
 const isBrokenPipeError = (error: Error): boolean => isRecord(error) && error["code"] === "EPIPE";
 
+const MIKOTO_CODEX_THREAD_CONFIG: Record<string, JsonValue> = {
+	// Keep this scoped to Mikoto-owned app-server threads.
+	// Codex elevated Windows sandbox can fail before Chrome loads.
+	// This happens when pwsh resolves through WindowsApps:
+	// https://github.com/openai/codex/issues/10090
+	// https://github.com/openai/codex/issues/26896
+	"windows.sandbox": "unelevated",
+};
+
 const createThreadStartParams = (input: CodexRunInput): JsonValue => {
 	const model = input.toolKind === "chrome_read" ? CODEX_CHROME_READ_MODEL : CODEX_TASK_MODEL;
 	const params: Record<string, JsonValue> = {
 		approvalPolicy: "never",
+		config: MIKOTO_CODEX_THREAD_CONFIG,
 		ephemeral: true,
 		model,
 		sandbox: "read-only",
@@ -516,6 +538,7 @@ class CodexAppServerClient {
 		}
 
 		const child = spawn(this.#command.command, this.#command.args, {
+			...(this.#command.cwd ? { cwd: this.#command.cwd } : {}),
 			stdio: ["pipe", "pipe", "pipe"],
 		});
 

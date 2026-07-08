@@ -29,6 +29,30 @@ mise //packages/codex-mcp:run
 
 The server uses stdio, so MCP clients should start it as a local command.
 
+## Codex Command Selection
+
+By default, the server resolves `codex` from `PATH`, then falls back to `mise x`
+and `bunx`. Set `MIKOTO_CODEX_COMMAND` to use a specific Codex executable.
+
+When running the MCP server in WSL but using Windows Codex and Chrome, point the
+command at the Windows `codex.exe` through `/mnt/c` and set a Windows-backed
+working directory:
+
+```console
+MIKOTO_CODEX_COMMAND=/mnt/c/path/to/codex.exe \
+MIKOTO_CODEX_COMMAND_CWD=/mnt/c/Users/me \
+mise //packages/codex-mcp:run
+```
+
+The cwd matters because Windows Codex receives it as the app-server process
+working directory. A WSL repository cwd may become a UNC path that Windows
+sandboxed command execution cannot use reliably.
+
+For Mikoto-created Codex app-server threads, the server requests Codex's
+unelevated Windows sandbox implementation while keeping the thread sandbox
+read-only. This is scoped to the Codex process launched by this MCP server and
+does not require changing the user's global Codex configuration.
+
 To regenerate the local reference copy of the Codex app-server protocol:
 
 ```console
