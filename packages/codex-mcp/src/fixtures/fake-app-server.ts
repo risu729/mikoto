@@ -19,7 +19,7 @@ const fail = (id: string | number, message: string): void => {
 type FakeRequest = {
 	id?: number | string;
 	method: string;
-	params?: { threadId?: string; turnId?: string };
+	params?: { config?: unknown; threadId?: string; turnId?: string };
 };
 
 const handleInitialize = (id: number | string): void => {
@@ -46,6 +46,18 @@ const handleThreadStart = (id: number | string): void => {
 		serviceTier: null,
 		thread: { id: "thread-1" },
 	});
+};
+
+const handleAssertThreadConfig = (request: FakeRequest & { id: number | string }): void => {
+	const config = is.object(request.params?.config)
+		? (request.params.config as Record<string, unknown>)
+		: {};
+	if (config["windows.sandbox"] !== "unelevated") {
+		fail(request.id, "Expected windows.sandbox to be forced to unelevated");
+		return;
+	}
+
+	handleThreadStart(request.id);
 };
 
 const emitTurnStartedResponse = (id: number | string): void => {
@@ -166,7 +178,11 @@ const handleRequest = (request: FakeRequest): void => {
 			handleInitialize(request.id);
 			break;
 		case "thread/start":
-			handleThreadStart(request.id);
+			if (scenario === "assert-thread-config") {
+				handleAssertThreadConfig(request as FakeRequest & { id: number | string });
+			} else {
+				handleThreadStart(request.id);
+			}
 			break;
 		case "turn/start":
 			handleTurnStart(request as FakeRequest & { id: number | string });

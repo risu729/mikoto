@@ -48,6 +48,11 @@ The cwd matters because Windows Codex receives it as the app-server process
 working directory. A WSL repository cwd may become a UNC path that Windows
 sandboxed command execution cannot use reliably.
 
+For Mikoto-created Codex app-server threads, the server requests Codex's
+unelevated Windows sandbox implementation while keeping the thread sandbox
+read-only. This is scoped to the Codex process launched by this MCP server and
+does not require changing the user's global Codex configuration.
+
 To regenerate the local reference copy of the Codex app-server protocol:
 
 ```console

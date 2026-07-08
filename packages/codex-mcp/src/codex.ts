@@ -455,10 +455,20 @@ const parseTurnId = (result: unknown): string => {
 
 const isBrokenPipeError = (error: Error): boolean => isRecord(error) && error["code"] === "EPIPE";
 
+const MIKOTO_CODEX_THREAD_CONFIG: Record<string, JsonValue> = {
+	// Keep this scoped to Mikoto-owned app-server threads.
+	// Codex elevated Windows sandbox can fail before Chrome loads.
+	// This happens when pwsh resolves through WindowsApps:
+	// https://github.com/openai/codex/issues/10090
+	// https://github.com/openai/codex/issues/26896
+	"windows.sandbox": "unelevated",
+};
+
 const createThreadStartParams = (input: CodexRunInput): JsonValue => {
 	const model = input.toolKind === "chrome_read" ? CODEX_CHROME_READ_MODEL : CODEX_TASK_MODEL;
 	const params: Record<string, JsonValue> = {
 		approvalPolicy: "never",
+		config: MIKOTO_CODEX_THREAD_CONFIG,
 		ephemeral: true,
 		model,
 		sandbox: "read-only",

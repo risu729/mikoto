@@ -220,6 +220,16 @@ describe("CodexAppServerClient successful runs", () => {
 			},
 		]);
 	});
+
+	it("forces Codex Windows sandbox mode only on Mikoto app-server threads", async () => {
+		const client = await createFakeClient("assert-thread-config");
+		const result = await client.run({
+			prompt: "hi",
+			toolKind: "chrome_read",
+		});
+
+		expect(result.ok).toBe(true);
+	});
 });
 
 describe("CodexAppServerClient failed runs", () => {
