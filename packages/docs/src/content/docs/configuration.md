@@ -3,9 +3,14 @@ description: Configure bridge identity, relay URL, and backend MCP servers.
 title: Configuration
 ---
 
-Configuration starts as project-local `mikoto.toml` with schema validation.
+Configuration starts as project-local `mikoto.toml` with schema validation. The
+latest JSON Schema is published at the [public schema URL][mikoto-schema].
+
+[mikoto-schema]: https://mikoto.takuk.me/schemas/mikoto.schema.json
 
 ```toml
+#:schema https://mikoto.takuk.me/schemas/mikoto.schema.json
+
 [bridge]
 id = "dev-machine"
 
