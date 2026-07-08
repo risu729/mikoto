@@ -127,12 +127,37 @@ describe("Codex command resolution", () => {
 		});
 	});
 
+	it("allows an explicit Codex command cwd override", async () => {
+		await expect(
+			resolveInstalledCodexCommand({
+				MIKOTO_CODEX_COMMAND:
+					"/mnt/c/Users/risu/AppData/Local/mise/installs/codex/0.142.5/bin/codex.exe",
+				MIKOTO_CODEX_COMMAND_CWD: "/mnt/c/Users/risu",
+			}),
+		).resolves.toEqual({
+			args: [],
+			command: "/mnt/c/Users/risu/AppData/Local/mise/installs/codex/0.142.5/bin/codex.exe",
+			cwd: "/mnt/c/Users/risu",
+		});
+	});
+});
+
+describe("Codex command resolution errors", () => {
 	it("rejects an empty Codex command override", async () => {
 		await expect(
 			resolveInstalledCodexCommand({
 				MIKOTO_CODEX_COMMAND: "   ",
 			}),
 		).rejects.toThrow("MIKOTO_CODEX_COMMAND must not be empty");
+	});
+
+	it("rejects an empty Codex command cwd override", async () => {
+		await expect(
+			resolveInstalledCodexCommand({
+				MIKOTO_CODEX_COMMAND: "codex",
+				MIKOTO_CODEX_COMMAND_CWD: "   ",
+			}),
+		).rejects.toThrow("MIKOTO_CODEX_COMMAND_CWD must not be empty");
 	});
 
 	it("rejects a Codex command override with an unterminated quote", async () => {
