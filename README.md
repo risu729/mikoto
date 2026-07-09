@@ -34,7 +34,7 @@ mise //packages/relay:dev
 mise //packages/bridge:run
 ```
 
-The local relay uses `http://localhost:8787/mcp` for MCP requests and
+The local relay uses `http://localhost:8787/` for MCP requests and
 `ws://localhost:8787/bridge` for bridge WebSocket connections.
 
 Run the docs site locally:

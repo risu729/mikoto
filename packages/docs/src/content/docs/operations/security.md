@@ -12,7 +12,7 @@ backends. Backend MCP servers enforce backend-specific safety rules.
 The deployed relay hostnames are DNS-public when the Worker routes exist.
 Cloudflare Access is the intended boundary for relay paths:
 
-- `https://mcp.mikoto.takuk.me/mcp*`: Cloudflare Access Managed OAuth.
+- `https://mcp.mikoto.takuk.me/*`: Cloudflare Access Managed OAuth.
 - `https://bridge.mikoto.takuk.me/bridge*`: WARP-restricted Access policy.
 - `https://bridge.mikoto.takuk.me/health*`: WARP-restricted Access policy.
 

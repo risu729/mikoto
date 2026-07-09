@@ -70,6 +70,12 @@ describe("relay MCP endpoint", () => {
 		expect(response.status).toBe(405);
 		expect(response.headers.get("allow")).toBe("GET, POST, DELETE");
 	});
+
+	it("does not expose MCP on the legacy path", async () => {
+		const response = await worker.fetch(new Request("http://example.com/mcp"));
+
+		expect(response.status).toBe(404);
+	});
 });
 
 describe("relay MCP local tool exposure", () => {
