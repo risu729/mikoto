@@ -55,7 +55,7 @@ Streamable HTTP endpoint.
 - Cloudflare service: **Zero Trust Access AI controls MCP servers**.
 - Access application name: `mikoto mcp`.
 - MCP server ID: `mikoto`.
-- HTTP URL: `https://mcp.mikoto.takuk.me/mcp`.
+- HTTP URL: `https://mcp.mikoto.takuk.me/`.
 - Authentication: enable **Managed OAuth** for the MCP server application.
 - Managed OAuth Dynamic Client Registration allowed redirect URIs:
   - `https://chatgpt.com/connector/oauth/*`
@@ -63,11 +63,12 @@ Streamable HTTP endpoint.
   the MCP server to ChatGPT. The current Cloudflare account uses the reusable
   `mikoto mcp users` policy, which allows `risunosu.com` email addresses and
   does not require Gateway/WARP.
-- Application AUD tag:
-  `9134ab1917929a84cdadc263a15be177c3746e309d0b081cc337379b488f96fb`.
+- Application AUD tag: record the generated value for troubleshooting.
 
-Use the MCP URL, not only the hostname. Cloudflare's MCP server Access
-application flow expects the HTTP URL to include the MCP path.
+Use a hostname dedicated to the MCP server and serve the MCP endpoint at the
+hostname root. Cloudflare Access one-time-code verification URLs carry the
+target hostname but not the MCP path, so path-scoped MCP applications can fail
+after email submission with `Unable to find your Access application!`.
 
 Do not require Cloudflare One Client, WARP, or Gateway for this application.
 After OAuth completes, ChatGPT is the caller of the MCP endpoint and cannot
@@ -95,7 +96,7 @@ app:
    - Description:
      `Access Mikoto MCP tools through the Cloudflare-protected relay.`
    - Connection: **Server URL**
-   - Server URL: `https://mcp.mikoto.takuk.me/mcp`
+   - Server URL: `https://mcp.mikoto.takuk.me/`
    - Authentication: **OAuth**
 7. Open **Advanced OAuth settings** and confirm that Dynamic Client
    Registration is available. Cloudflare Managed OAuth should advertise:
@@ -105,7 +106,7 @@ app:
      `https://risu729.cloudflareaccess.com/cdn-cgi/access/oauth/token`
    - Registration URL:
      `https://risu729.cloudflareaccess.com/cdn-cgi/access/oauth/registration`
-   - Resource: `https://mcp.mikoto.takuk.me/mcp`
+   - Resource: `https://mcp.mikoto.takuk.me/`
 8. Check **I understand and want to continue**.
 9. Select **Create**.
 10. Select **Sign in with Mikoto** and complete the Cloudflare Access login.
@@ -117,10 +118,14 @@ Managed OAuth**, and verify that
 `https://chatgpt.com/connector/oauth/*` is present in **Allowed redirect URIs**.
 
 If Cloudflare Access reports `Unable to find your Access application!` after
-entering the one-time PIN, verify that bridge traffic has moved to
-`bridge.mikoto.takuk.me` and reconnect the ChatGPT app. See the known
-WARP/Gateway login issue for background:
-[risu729/mikoto#123](https://github.com/risu729/mikoto/issues/123).
+sending the login code, verify that the MCP application uses the hostname root
+and not a path-scoped URL such as `/mcp`.
+
+If an existing Cloudflare Protected MCP server record was created with
+`https://mcp.mikoto.takuk.me/mcp`, Cloudflare may show the HTTP URL as
+read-only. In that case, replace the Protected MCP server record with one that
+uses `https://mcp.mikoto.takuk.me/`, then reconnect the ChatGPT app using the
+root server URL.
 
 ### Bridge And Health Endpoints
 
@@ -143,7 +148,7 @@ WebSocket endpoint and health check.
 
 Keep bridge traffic on `bridge.mikoto.takuk.me`, separate from the
 ChatGPT-facing `mcp.mikoto.takuk.me` hostname. ChatGPT should authenticate to
-`https://mcp.mikoto.takuk.me/mcp` through Access Managed OAuth, while bridge
+`https://mcp.mikoto.takuk.me/` through Access Managed OAuth, while bridge
 connections should use `wss://bridge.mikoto.takuk.me/bridge` and be limited to
 trusted local computers.
 

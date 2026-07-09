@@ -41,7 +41,7 @@ const getRelayStub = (env: Env): DurableObjectStub => {
 	return env.RELAY_DO.get(durableObjectId);
 };
 
-app.all("/mcp", async (context: Context<{ Bindings: Env }>) => {
+app.all("/", async (context: Context<{ Bindings: Env }>) => {
 	// Stateless SDK transports must be request-scoped; reusing one across requests throws.
 	const server = createRelayMcpServer(context.env);
 	const transport = new WebStandardStreamableHTTPServerTransport({

@@ -116,7 +116,7 @@ const sendBridgeHello = (webSocket: WebSocket, bridgeId = "dev-machine"): void =
 };
 
 const postMcp = async (body: unknown): Promise<Response> =>
-	await SELF.fetch("http://example.com/mcp", {
+	await SELF.fetch("http://example.com/", {
 		body: JSON.stringify(body),
 		headers: {
 			accept: "application/json, text/event-stream",
@@ -191,7 +191,7 @@ const callListBridgesTool = async (): Promise<BridgeListPayload> =>
 	(await callMcpTool("mikoto_list_bridges", {})) as BridgeListPayload;
 
 const fetchUnsupportedMcpMethod = async (): Promise<Response> =>
-	await SELF.fetch("http://example.com/mcp", {
+	await SELF.fetch("http://example.com/", {
 		body: JSON.stringify({
 			id: 4,
 			jsonrpc: "2.0",
