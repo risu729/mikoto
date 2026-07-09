@@ -32,9 +32,10 @@ and static-assets configuration.
 ## Relay Worker
 
 The relay is a Cloudflare Worker and Durable Object at
-`mcp.mikoto.takuk.me`. The production environment in
-`packages/relay/wrangler.jsonc` configures the Worker route, Durable Object
-binding, migrations, source-map uploads, and observability.
+`mcp.mikoto.takuk.me` and `bridge.mikoto.takuk.me`. Both hostnames route to the
+same Worker. The production environment in `packages/relay/wrangler.jsonc`
+configures the Worker routes, Durable Object binding, migrations, source-map
+uploads, and observability.
 
 Pull requests run a tokenless production relay deployment dry run with
 `wrangler deploy --env production --dry-run`, including pull requests from

@@ -30,6 +30,10 @@
 					"pattern": "mcp.mikoto.takuk.me",
 					"custom_domain": true,
 				},
+				{
+					"pattern": "bridge.mikoto.takuk.me",
+					"custom_domain": true,
+				},
 			],
 			"upload_source_maps": true,
 			"durable_objects": {

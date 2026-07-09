@@ -26,18 +26,26 @@ Actions through Wrangler.
 Production hostnames are configured as Wrangler custom-domain routes:
 
 - `mikoto.takuk.me`: docs Worker.
-- `mcp.mikoto.takuk.me`: relay Worker.
+- `mcp.mikoto.takuk.me`: relay Worker for ChatGPT-facing MCP traffic.
+- `bridge.mikoto.takuk.me`: same relay Worker for local bridge and health
+  traffic.
 
-The relay production `workers.dev` route is disabled. The custom domain is the
-production entrypoint.
+The relay production `workers.dev` route is disabled. The relay uses one Worker
+served through two custom domains so Cloudflare Access can keep ChatGPT Managed
+OAuth separate from WARP-restricted bridge authentication.
 
 ## Access Applications
 
-Create Cloudflare Access protection for the relay hostname before using a
+Create Cloudflare Access protection for the relay hostnames before using a
 deployed relay for real traffic.
 
 The relay needs two different Access protections because the ChatGPT-facing MCP
 endpoint and the local bridge endpoint have different callers.
+
+Use separate hostnames for the two protections. Sharing one hostname and only
+splitting by path can make Cloudflare Access select a WARP/private-app flow
+during ChatGPT Managed OAuth login when the operator's browser is connected
+through WARP/Gateway.
 
 ### MCP Endpoint
 
@@ -60,6 +68,10 @@ Streamable HTTP endpoint.
 
 Use the MCP URL, not only the hostname. Cloudflare's MCP server Access
 application flow expects the HTTP URL to include the MCP path.
+
+Do not require Cloudflare One Client, WARP, or Gateway for this application.
+After OAuth completes, ChatGPT is the caller of the MCP endpoint and cannot
+satisfy a local device/WARP policy.
 
 The ChatGPT redirect URI wildcard is required for OpenAI's ChatGPT Apps OAuth
 flow. When a user connects the custom app, ChatGPT dynamically registers an
@@ -105,7 +117,9 @@ Managed OAuth**, and verify that
 `https://chatgpt.com/connector/oauth/*` is present in **Allowed redirect URIs**.
 
 If Cloudflare Access reports `Unable to find your Access application!` after
-entering the one-time PIN, see the known WARP/Gateway login issue:
+entering the one-time PIN, verify that bridge traffic has moved to
+`bridge.mikoto.takuk.me` and reconnect the ChatGPT app. See the known
+WARP/Gateway login issue for background:
 [risu729/mikoto#123](https://github.com/risu729/mikoto/issues/123).
 
 ### Bridge And Health Endpoints
@@ -115,7 +129,7 @@ WebSocket endpoint and health check.
 
 - Cloudflare service: **Zero Trust Access Applications**.
 - Access application name: `mikoto bridge`.
-- Public hostname: `mcp.mikoto.takuk.me`.
+- Public hostname: `bridge.mikoto.takuk.me`.
 - Protected paths:
   - `/bridge*`
   - `/health*`
@@ -127,11 +141,13 @@ WebSocket endpoint and health check.
 - Managed OAuth: leave disabled for this application. The bridge is not an MCP
   OAuth client.
 
-Keep `/bridge*` separate from `/mcp*`. ChatGPT should authenticate to `/mcp`
-through Access Managed OAuth, while bridge connections should be limited to
+Keep bridge traffic on `bridge.mikoto.takuk.me`, separate from the
+ChatGPT-facing `mcp.mikoto.takuk.me` hostname. ChatGPT should authenticate to
+`https://mcp.mikoto.takuk.me/mcp` through Access Managed OAuth, while bridge
+connections should use `wss://bridge.mikoto.takuk.me/bridge` and be limited to
 trusted local computers.
 
-The hostname itself is DNS-public when the Worker route exists. Until both
+Each hostname is DNS-public when the Worker route exists. Until both
 Access applications and policies exist, treat deployed relay paths as
 internet-reachable.
 

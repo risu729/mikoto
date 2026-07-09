@@ -9,12 +9,16 @@ backends. Backend MCP servers enforce backend-specific safety rules.
 
 ## Access Boundary
 
-The deployed relay hostname is DNS-public when the Worker route exists.
+The deployed relay hostnames are DNS-public when the Worker routes exist.
 Cloudflare Access is the intended boundary for relay paths:
 
-- `/mcp*`: Cloudflare Access Managed OAuth.
-- `/bridge*`: WARP-restricted Access policy.
-- `/health*`: WARP-restricted Access policy.
+- `https://mcp.mikoto.takuk.me/mcp*`: Cloudflare Access Managed OAuth.
+- `https://bridge.mikoto.takuk.me/bridge*`: WARP-restricted Access policy.
+- `https://bridge.mikoto.takuk.me/health*`: WARP-restricted Access policy.
+
+The same relay Worker serves both hostnames. They are separate at the
+Cloudflare Access layer so ChatGPT Managed OAuth does not share a hostname with
+WARP/private-app bridge authentication.
 
 Cloudflare Access forwards authenticated requests to the Worker and may include
 `Cf-Access-Jwt-Assertion`. Mikoto does not currently use this header for
