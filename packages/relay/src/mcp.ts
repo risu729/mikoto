@@ -7,10 +7,6 @@ import { z } from "zod";
 
 import type { RegisteredBridge } from "./routing";
 
-type Env = {
-	RELAY_DO: DurableObjectNamespace;
-};
-
 const CALL_TOOL_NAME = "mikoto_call_tool";
 const LIST_BRIDGES_TOOL_NAME = "mikoto_list_bridges";
 const EmptyInputSchema = z.strictObject({});

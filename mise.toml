@@ -46,10 +46,12 @@ run = "bun install --frozen-lockfile"
 
 [tasks.test]
 description = "Run repository Vitest tests."
+depends = ["//packages/relay:generate-types"]
 run = "bunx vitest run"
 
 [tasks.check]
 description = "Run hk linters and formatters."
+depends = ["//packages/relay:generate-types"]
 usage = '''
 flag "--lint" help="Run hk check instead of fix"
 '''

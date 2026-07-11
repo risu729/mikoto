@@ -2,7 +2,12 @@
 
 [tasks.test]
 description = "Run Cloudflare Worker relay tests."
+depends = ["generate-types"]
 run = "bunx vitest run"
+
+[tasks."generate-types"]
+description = "Generate Cloudflare Worker runtime and binding types."
+run = "wrangler types worker-configuration.d.ts"
 
 [tasks.dev]
 description = "Run the relay Worker locally with Wrangler."

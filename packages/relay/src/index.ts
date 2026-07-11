@@ -21,9 +21,6 @@ import createRelayMcpServer from "./mcp";
 import { createPendingError, createToolError, selectBridge } from "./routing";
 import type { PendingToolCall, RegisteredBridge } from "./routing";
 
-type Env = {
-	RELAY_DO: DurableObjectNamespace;
-};
 type ToolCallPayload = {
 	arguments: JsonObject;
 	bridgeId?: string;
