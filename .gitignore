@@ -3,6 +3,7 @@ dist/
 .astro/
 .wrangler/
 .generated/
+packages/relay/worker-configuration.d.ts
 .dev.vars
 *.log
 *.tsbuildinfo
