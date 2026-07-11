@@ -2,6 +2,7 @@
 
 [tasks.test]
 description = "Run Cloudflare Worker relay tests."
+depends = ["generate-types"]
 run = "bunx vitest run"
 
 [tasks."generate-types"]
