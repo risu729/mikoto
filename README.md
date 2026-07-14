@@ -1,5 +1,7 @@
 # Mikoto
 
+![Mikoto logo](assets/logo.svg)
+
 Mikoto is an early-stage local MCP gateway for using ChatGPT with explicitly
 configured local MCP servers through a Cloudflare relay.
 
