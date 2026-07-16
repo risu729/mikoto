@@ -453,7 +453,7 @@ const parseTurnId = (result: unknown): string => {
 	return result["turn"]["id"];
 };
 
-const isBrokenPipeError = (error: Error): boolean => isRecord(error) && error["code"] === "EPIPE";
+const isBrokenPipeError = (error: Error): boolean => "code" in error && error.code === "EPIPE";
 
 const MIKOTO_CODEX_THREAD_CONFIG: Record<string, JsonValue> = {
 	// Keep this scoped to Mikoto-owned app-server threads.
