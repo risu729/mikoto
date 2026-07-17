@@ -2,7 +2,7 @@
 	"$schema": "../../node_modules/wrangler/config-schema.json",
 	"name": "mikoto-relay",
 	"main": "src/index.ts",
-	"compatibility_date": "2026-07-10",
+	"compatibility_date": "2026-07-14",
 	"upload_source_maps": true,
 	"durable_objects": {
 		"bindings": [
