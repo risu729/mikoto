@@ -13,7 +13,7 @@
 		"zod": "4.4.3"
 	},
 	"devDependencies": {
-		"@cloudflare/vite-plugin": "1.44.0",
+		"@cloudflare/vite-plugin": "1.45.0",
 		"@cloudflare/vitest-pool-workers": "0.18.4",
 		"vite": "8.1.4",
 		"vitest": "4.1.10"
