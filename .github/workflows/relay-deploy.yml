@@ -24,9 +24,18 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Deploy relay
-        uses: ./.github/actions/relay-deploy
+      - name: Install mise
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
         with:
-          dry-run: "false"
+          version: 2026.7.11
+        env:
+          MISE_ENABLE_TOOLS: bun,node,wrangler
+      - name: Deploy relay
+        uses: risu729/wrangler-deploy-action@60564f39135d605f8376c7c66ac21ab12b899271 # v1.0.0
+        with:
+          mode: production
+          working-directory: packages/relay
+          config: wrangler.jsonc
+          environment: production
           cloudflare-account-id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           cloudflare-api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}

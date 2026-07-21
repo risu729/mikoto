@@ -61,8 +61,8 @@ These instructions apply to all work in this repository.
 - Protect the local bridge WebSocket endpoint with a separate Cloudflare Access
   policy that trusts intended local computers through Cloudflare One
   Client/WARP.
-- Deploy the relay through GitHub Actions using raw `wrangler` commands with a
-  Cloudflare API token.
+- Deploy Workers through GitHub Actions using `risu729/wrangler-deploy-action`
+  and the repository's mise-managed Wrangler with a Cloudflare API token.
 - Do not use Cloudflare Workers Builds for this repository.
 
 ## Commit Messages

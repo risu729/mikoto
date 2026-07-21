@@ -181,8 +181,12 @@ Minimum Cloudflare API token permissions for the current docs and relay
 deployments:
 
 - Account `risu`: `Workers Scripts: Edit`.
-- Zone `takuk.me`: `Workers Routes: Edit`.
-- Zone `takuk.me`: `DNS: Edit`.
+
+The current routes are Workers Custom Domains (`custom_domain: true`), so they
+do not also require `Workers Routes: Edit` or `DNS: Edit`. If an ordinary route
+is added later, the token needs `Workers Routes: Edit` for its zone. Such a
+route also needs a separately configured proxied DNS record; grant `DNS: Edit`
+only if the workflow will create or change that record.
 
 The relay Worker does not currently require runtime Worker secrets or GitHub
 environment variables beyond `CLOUDFLARE_ACCOUNT_ID`.

@@ -97,102 +97,18 @@ jobs:
           key: playwright-chromium-${{ runner.os }}-${{ steps.dependency-versions.outputs.playwright }}
           restore-keys: |
             playwright-chromium-${{ runner.os }}-
-      - name: Check Cloudflare token
-        id: cloudflare-token
-        if: github.repository == 'risu729/mikoto' && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          if [[ -n "${CLOUDFLARE_API_TOKEN}" && -n "${CLOUDFLARE_ACCOUNT_ID}" ]]; then
-            echo "available=true" >> "${GITHUB_OUTPUT}"
-          else
-            echo "available=false" >> "${GITHUB_OUTPUT}"
-          fi
-      - name: Require Cloudflare config for docs production deploy
-        if: github.repository == 'risu729/mikoto' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cloudflare-token.outputs.available != 'true'
-        run: |
-          echo "CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required for docs production deployment." >&2
-          exit 1
-      - name: Upload docs preview
-        id: upload-docs-preview
-        if: github.repository == 'risu729/mikoto' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.cloudflare-token.outputs.available == 'true'
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          PREVIEW_ALIAS: pr-${{ github.event.pull_request.number }}
-        run: |
-          output_dir="${RUNNER_TEMP}/wrangler-output-docs-preview-${GITHUB_RUN_ID}"
-          rm -rf "${output_dir}"
-          mkdir -p "${output_dir}"
-          export WRANGLER_OUTPUT_FILE_DIRECTORY="${output_dir}"
-
-          mise //packages/docs:upload-preview -- --preview-alias "${PREVIEW_ALIAS}"
-
-          shopt -s nullglob
-          files=("${output_dir}"/wrangler-output-*.json)
-          if [[ "${#files[@]}" -eq 0 ]]; then
-            echo "Unable to find Wrangler preview output" >&2
-            exit 1
-          fi
-
-          preview_url="$(jq -r 'select(.type == "version-upload") | .preview_url // empty' "${files[@]}" | head -n 1)"
-          preview_alias_url="$(jq -r 'select(.type == "version-upload") | .preview_alias_url // empty' "${files[@]}" | head -n 1)"
-          version_preview="_Unavailable_"
-          branch_alias_preview="_Unavailable_"
-          if [[ -n "${preview_url}" ]]; then
-            version_preview="<${preview_url}>"
-          fi
-          if [[ -n "${preview_alias_url}" ]]; then
-            branch_alias_preview="<${preview_alias_url}>"
-          fi
-
-          {
-            echo "### Cloudflare Workers Preview"
-            echo
-            echo "Branch alias: \`${PREVIEW_ALIAS}\`"
-            echo
-            echo "| Name | URL |"
-            echo "| - | - |"
-            echo "| Version preview | ${version_preview} |"
-            echo "| Branch alias preview | ${branch_alias_preview} |"
-          } >> "${GITHUB_STEP_SUMMARY}"
-      - name: Dry-run docs deploy
-        if: github.event_name == 'pull_request' && steps.upload-docs-preview.outcome == 'skipped'
-        run: mise //packages/docs:deploy -- --dry-run
+      - name: Build docs
+        run: mise //packages/docs:build
       - name: Deploy docs
-        if: github.repository == 'risu729/mikoto' && github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.cloudflare-token.outputs.available == 'true'
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          output_dir="${RUNNER_TEMP}/wrangler-output-docs-production-${GITHUB_RUN_ID}"
-          rm -rf "${output_dir}"
-          mkdir -p "${output_dir}"
-          export WRANGLER_OUTPUT_FILE_DIRECTORY="${output_dir}"
-
-          mise //packages/docs:deploy
-
-          shopt -s nullglob
-          files=("${output_dir}"/wrangler-output-*.json)
-          targets=""
-          if [[ "${#files[@]}" -gt 0 ]]; then
-            targets="$(jq -r 'select(.type == "deploy") | (.targets // [])[]' "${files[@]}")"
-          fi
-
-          {
-            echo "### Cloudflare Workers Production Deploy"
-            echo
-            echo "| Target |"
-            echo "| - |"
-            if [[ -n "${targets}" ]]; then
-              while IFS= read -r target; do
-                echo "| <${target}> |"
-              done <<< "${targets}"
-            else
-              echo "| _Unavailable_ |"
-            fi
-          } >> "${GITHUB_STEP_SUMMARY}"
+        if: github.event_name != 'workflow_dispatch'
+        uses: risu729/wrangler-deploy-action@60564f39135d605f8376c7c66ac21ab12b899271 # v1.0.0
+        with:
+          mode: ${{ github.event_name == 'pull_request' && 'preview-or-dry-run' || 'production' }}
+          working-directory: packages/docs
+          config: wrangler.jsonc
+          preview-alias: pr-${{ github.event.pull_request.number }}
+          cloudflare-account-id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          cloudflare-api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   relay-deploy-dry-run:
     name: Relay Deploy Dry Run
     if: github.event_name == 'pull_request'
@@ -205,10 +121,19 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Dry-run relay deploy
-        uses: ./.github/actions/relay-deploy
+      - name: Install mise
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
         with:
-          dry-run: "true"
+          version: 2026.7.11
+        env:
+          MISE_ENABLE_TOOLS: bun,node,wrangler
+      - name: Dry-run relay deploy
+        uses: risu729/wrangler-deploy-action@60564f39135d605f8376c7c66ac21ab12b899271 # v1.0.0
+        with:
+          mode: dry-run
+          working-directory: packages/relay
+          config: wrangler.jsonc
+          environment: production
   ci-check:
     name: CI Check
     needs:
