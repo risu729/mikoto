@@ -127,6 +127,8 @@ jobs:
           version: 2026.7.11
         env:
           MISE_ENABLE_TOOLS: bun,node,wrangler
+      - name: Install dependencies
+        run: mise deps
       - name: Dry-run relay deploy
         uses: risu729/wrangler-deploy-action@60564f39135d605f8376c7c66ac21ab12b899271 # v1.0.0
         with:
