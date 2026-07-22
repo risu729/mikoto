@@ -19,7 +19,12 @@
 		},
 	],
 	"observability": {
-		"enabled": true,
+		"logs": {
+			"enabled": true,
+		},
+		"traces": {
+			"enabled": true,
+		},
 	},
 	"env": {
 		"production": {
@@ -51,7 +56,12 @@
 				},
 			],
 			"observability": {
-				"enabled": true,
+				"logs": {
+					"enabled": true,
+				},
+				"traces": {
+					"enabled": true,
+				},
 			},
 		},
 	},
