@@ -64,6 +64,9 @@ These instructions apply to all work in this repository.
 - Deploy Workers through GitHub Actions using `risu729/wrangler-deploy-action`
   and the repository's package-local Wrangler, installed through mise, with a
   Cloudflare API token.
+- Keep the token scoped to `Workers Scripts: Edit` on account `risu` and
+  `Workers Routes: Read` on zone `takuk.me`; ordinary routes require
+  `Workers Routes: Edit`, while Custom Domains do not require `DNS: Edit`.
 - Do not use Cloudflare Workers Builds for this repository.
 
 ## Commit Messages
