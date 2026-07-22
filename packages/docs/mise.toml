@@ -18,11 +18,6 @@ description = "Preview the built Starlight docs site."
 depends = [":build"]
 run = "bunx astro preview"
 
-[tasks."upload-preview"]
-description = "Build and upload a docs Worker preview version with Wrangler."
-depends = [":build"]
-run = "wrangler versions upload"
-
 [tasks.deploy]
 description = "Build and deploy the docs Worker with Wrangler."
 depends = [":build"]
