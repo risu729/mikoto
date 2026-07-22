@@ -62,7 +62,8 @@ These instructions apply to all work in this repository.
   policy that trusts intended local computers through Cloudflare One
   Client/WARP.
 - Deploy Workers through GitHub Actions using `risu729/wrangler-deploy-action`
-  and the repository's mise-managed Wrangler with a Cloudflare API token.
+  and the repository's package-local Wrangler, installed through mise, with a
+  Cloudflare API token.
 - Do not use Cloudflare Workers Builds for this repository.
 
 ## Commit Messages

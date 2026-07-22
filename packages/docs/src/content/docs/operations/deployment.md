@@ -13,7 +13,8 @@ The docs Worker deployment runs in the main CI workflow. The relay production
 deployment runs in a separate GitHub Actions workflow.
 
 The workflows use `risu729/wrangler-deploy-action` with the repository's
-mise-managed Wrangler. The repository does not use Cloudflare Workers Builds.
+package-local Wrangler, installed through mise's Bun dependency task. The
+repository does not use Cloudflare Workers Builds.
 
 ## Docs Worker
 
