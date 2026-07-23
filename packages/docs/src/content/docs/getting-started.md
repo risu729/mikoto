@@ -28,11 +28,17 @@ install and sign in to Codex locally. Browser reads also require the official
 ## 1. Prepare The Repository
 
 Clone or fork [the Mikoto repository](https://github.com/risu729/mikoto), then
-install the pinned tools and dependencies:
+install its pinned deployment tools and dependencies:
 
 ```console
 mise install
 mise deps
+```
+
+Install and activate the latest local bridge and bundled Codex MCP backend:
+
+```console
+mise use -g github:risu729/mikoto
 ```
 
 Choose three hostnames:
@@ -94,14 +100,13 @@ For a deployed relay, set the WebSocket URL to the protected bridge hostname:
 url = "wss://bridge.example.com/bridge"
 ```
 
-The example starts the bundled Codex MCP backend over stdio:
+Configure the bundled Codex MCP backend to use the released executable:
 
 ```toml
 [[servers]]
 id = "codex"
 transport = "stdio"
-command = "bun"
-args = ["packages/codex-mcp/src/index.ts"]
+command = "mikoto-codex-mcp"
 ```
 
 Only servers in this file are started or exposed. Review
@@ -113,7 +118,7 @@ environment, or creating a tool alias.
 Connect the computer to Cloudflare One Client in WARP mode, then run:
 
 ```console
-mise //packages/bridge:run
+mikoto-bridge
 ```
 
 The bridge starts every configured backend, discovers its tools, connects

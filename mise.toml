@@ -15,6 +15,7 @@ bun = "1.3.14"
 node = "26.5.0"
 wrangler = "4.112.0"
 "npm:typescript" = "7.0.2"
+"npm:semantic-release" = "25.0.8"
 hk = "1.53.0"
 oxlint = "1.72.0"
 oxfmt = "0.59.0"
@@ -61,7 +62,9 @@ run = "hk {% if usage.lint %}check{% else %}fix{% endif %} --all --no-progress -
 description = "Compile all local binaries."
 run = [
 	"mise //packages/codex-mcp:compile --target linux-x64",
+	"mise //packages/codex-mcp:compile --target macos-arm64",
 	"mise //packages/codex-mcp:compile --target windows-x64",
 	"mise //packages/bridge:compile --target linux-x64",
+	"mise //packages/bridge:compile --target macos-arm64",
 	"mise //packages/bridge:compile --target windows-x64",
 ]

@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 import { env as processEnv } from "node:process";
 import { createInterface } from "node:readline";
 
+import { MIKOTO_VERSION } from "@mikoto/protocol";
 import is from "@sindresorhus/is";
 import { execa } from "execa";
 import { DateTime } from "luxon";
@@ -572,7 +573,7 @@ class CodexAppServerClient {
 			clientInfo: {
 				name: "mikoto-codex-mcp",
 				title: null,
-				version: "0.0.0",
+				version: MIKOTO_VERSION,
 			},
 		});
 		this.#notify("initialized");

@@ -1,4 +1,4 @@
-import { RelayToBridgeMessageSchema } from "@mikoto/protocol";
+import { MIKOTO_VERSION, RelayToBridgeMessageSchema } from "@mikoto/protocol";
 import type {
 	BridgeHelloMessage,
 	JsonObject,
@@ -22,6 +22,15 @@ const parseArgs = (argv: string[]): CliOptions => {
 	return {
 		configPath: configIndex >= 0 ? (argv[configIndex + 1] ?? "mikoto.toml") : "mikoto.toml",
 	};
+};
+
+const printVersion = (argv: string[]): boolean => {
+	if (!argv.includes("--version") && !argv.includes("-v")) {
+		return false;
+	}
+
+	process.stdout.write(`${MIKOTO_VERSION}\n`);
+	return true;
 };
 
 const nowIso = (): string => new Date().toISOString();
@@ -152,8 +161,7 @@ const connectRelay = (
 		});
 	});
 
-const main = async (argv = process.argv.slice(2)): Promise<void> => {
-	const { configPath } = parseArgs(argv);
+const runBridge = async (configPath: string): Promise<void> => {
 	const config = await loadBridgeConfig(configPath);
 	const backendDiscovery = await startConfiguredBackends(config.servers);
 
@@ -166,6 +174,12 @@ const main = async (argv = process.argv.slice(2)): Promise<void> => {
 		await connectRelay(config, backendDiscovery);
 	} finally {
 		await backendDiscovery.close();
+	}
+};
+
+const main = async (argv = process.argv.slice(2)): Promise<void> => {
+	if (!printVersion(argv)) {
+		await runBridge(parseArgs(argv).configPath);
 	}
 };
 

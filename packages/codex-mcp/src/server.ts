@@ -1,3 +1,4 @@
+import { MIKOTO_VERSION } from "@mikoto/protocol";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
@@ -161,7 +162,7 @@ const createCodexMcpServer = async (
 ): Promise<McpServer> => {
 	const server = new McpServer({
 		name: "mikoto-codex-mcp",
-		version: "0.0.0",
+		version: MIKOTO_VERSION,
 	});
 	const tasks = await createTaskManager(options);
 
