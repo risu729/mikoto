@@ -1,4 +1,4 @@
-import { JsonObjectSchema, JsonValueSchema } from "@mikoto/protocol";
+import { JsonObjectSchema, JsonValueSchema, MIKOTO_VERSION } from "@mikoto/protocol";
 import type { BackendServer, JsonObject, JsonValue, ToolInfo } from "@mikoto/protocol";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
@@ -56,7 +56,7 @@ const createStdioParams = (server: StdioBackendServer): StdioServerParameters =>
 const createStdioBackendClient: BackendClientFactory = async (server) => {
 	const client = new Client({
 		name: "mikoto-bridge",
-		version: "0.0.0",
+		version: MIKOTO_VERSION,
 	});
 	const transport = new StdioClientTransport(createStdioParams(server));
 

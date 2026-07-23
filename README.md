@@ -33,6 +33,22 @@ make a first tool call.
 
 [getting-started]: https://mikoto.takuk.me/getting-started/
 
+## Install Local Binaries
+
+Install and activate the latest `mikoto-bridge` and `mikoto-codex-mcp`
+executables with mise:
+
+```console
+mise use -g github:risu729/mikoto
+```
+
+Released binaries support `--version`:
+
+```console
+mikoto-bridge --version
+mikoto-codex-mcp --version
+```
+
 ## Repository Packages
 
 - `packages/relay`: Cloudflare Worker and Durable Object relay.

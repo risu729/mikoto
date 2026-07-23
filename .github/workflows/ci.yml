@@ -1,14 +1,15 @@
 name: CI
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
+  workflow_call:
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: false
   workflow_dispatch:
 concurrency:
-  group: ${{ github.workflow }}-${{ case(github.event_name == 'pull_request', github.event.pull_request.number, github.ref) }}
+  group: ci-${{ case(github.event_name == 'pull_request', github.event.pull_request.number, github.ref) }}
   cancel-in-progress: true
 permissions: {}
 defaults:
@@ -51,6 +52,27 @@ jobs:
           version: 2026.7.12
       - name: Test
         run: mise run test
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install mise
+        uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
+        with:
+          version: 2026.7.12
+      - name: Compile
+        run: mise run compile
+      - name: Check compiled versions
+        run: |
+          test "$(dist/mikoto-bridge-linux-x64 --version)" = "0.0.0-development"
+          test "$(dist/mikoto-codex-mcp-linux-x64 --version)" = "0.0.0-development"
   relay-test:
     name: Relay Test
     runs-on: ubuntu-24.04
@@ -141,6 +163,7 @@ jobs:
     needs:
       - lint
       - test
+      - build
       - relay-test
       - docs-deploy
       - relay-deploy-dry-run
