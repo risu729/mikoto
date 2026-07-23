@@ -16,9 +16,13 @@ Cloudflare Access is the intended boundary for relay paths:
 - `https://bridge.mikoto.takuk.me/bridge*`: WARP-restricted Access policy.
 - `https://bridge.mikoto.takuk.me/health*`: WARP-restricted Access policy.
 
-The same relay Worker serves both hostnames. They are separate at the
-Cloudflare Access layer so ChatGPT Managed OAuth does not share a hostname with
-WARP/private-app bridge authentication.
+The same relay Worker serves both hostnames. They are separate at the Cloudflare
+Access layer so ChatGPT Managed OAuth does not share a hostname with
+WARP/private-app bridge authentication. This separation does not prevent the
+current
+[WARP-connected Managed OAuth limitation][warp-oauth-limit];
+operators must disconnect WARP for the OAuth login and reconnect it before using
+the bridge.
 
 Cloudflare Access forwards authenticated requests to the Worker and may include
 `Cf-Access-Jwt-Assertion`. Mikoto does not currently use this header for
@@ -75,3 +79,5 @@ Bridge and relay application logs are stdout-only. Cloudflare Workers logs and
 traces are enabled for the deployed relay. Logs should include operational
 metadata such as component, bridge id, tool name, status, duration, and error
 code. They should not log full tool arguments or full tool results by default.
+
+[warp-oauth-limit]: /setup/cloudflare/#warp-connected-oauth-login

@@ -49,9 +49,10 @@ The relay needs two different Access protections because the ChatGPT-facing MCP
 endpoint and the local bridge endpoint have different callers.
 
 Use separate hostnames for the two protections. Sharing one hostname and only
-splitting by path can make Cloudflare Access select a WARP/private-app flow
-during ChatGPT Managed OAuth login when the operator's browser is connected
-through WARP/Gateway.
+splitting by path couples applications with different callers, policies, and
+authentication flows. Separate hostnames preserve that security boundary, but
+do not work around the WARP-connected Managed OAuth limitation described
+below.
 
 ### MCP Endpoint
 
@@ -133,6 +134,29 @@ read-only. In that case, replace the Protected MCP server record with one that
 uses `https://mcp.mikoto.takuk.me/`, then reconnect the ChatGPT app using the
 root server URL.
 
+#### WARP-Connected OAuth Login
+
+Cloudflare Access Managed OAuth login currently does not work for this
+deployment when the browser completing the login is connected through
+Cloudflare One Client in WARP/Gateway mode. Access may classify the
+authorization as a private-application flow even when:
+
+- the MCP and bridge applications use separate hostnames;
+- **Authenticate with Cloudflare One Client** is disabled for the MCP
+  application (`allow_authenticate_via_warp` is `false`);
+- the MCP application is served at the hostname root.
+
+After the one-time code is submitted, the verification page then reports
+`Unable to find your Access application!`. This behavior is tracked in
+[issue #123][mikoto-issue-123].
+
+As a workaround, disconnect WARP before selecting **Sign in with Mikoto**,
+complete the Cloudflare Access OAuth login, and then reconnect WARP. The bridge
+remains WARP-restricted and requires WARP after the OAuth login is complete.
+Do not permanently exclude the Access team domain, such as
+`risu729.cloudflareaccess.com`, with Split Tunnels: Cloudflare One Client also
+uses that domain for its own authentication and session handling.
+
 ### Bridge And Health Endpoints
 
 Create a separate Cloudflare Access self-hosted application for the local bridge
@@ -174,6 +198,7 @@ internet-reachable.
 [cloudflare-application-token]: https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/application-token/
 [cloudflare-managed-oauth]: https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/managed-oauth/
 [cloudflare-mcp-access]: https://developers.cloudflare.com/cloudflare-one/access-controls/ai-controls/secure-mcp-servers/
+[mikoto-issue-123]: https://github.com/risu729/mikoto/issues/123
 [openai-apps-auth]: https://developers.openai.com/apps-sdk/build/auth
 
 ## GitHub Actions Inputs
