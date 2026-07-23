@@ -11,7 +11,7 @@ from the bridge so Codex remains one backend rather than the whole gateway.
 `mikoto-codex-mcp`:
 
 - launches and owns a local Codex app-server process;
-- creates a fresh Codex thread for each MCP tool call;
+- creates a fresh Codex thread for each started task;
 - runs bounded app-server turns;
 - keeps running task state in memory for later polling;
 - returns normalized partial and final JSON results;
@@ -34,7 +34,7 @@ these names with the configured backend prefix, such as
 
 ## Browser Reads
 
-`codex_chrome_read` accepts natural-language read requests and returns
+`codex_chrome_read_start` accepts natural-language read requests and returns
 structured, task-oriented information. It exists so ChatGPT can ask questions
 about an allowed local browser context, including existing browser sessions,
 without receiving raw browser internals.

@@ -48,8 +48,8 @@ target = "codex.codex_chrome_read_start"
 - `[[servers]].command`: executable used to start a stdio backend.
 - `[[servers]].args`: optional command arguments.
 - `[[servers]].cwd`: optional backend working directory.
-- `[[servers]].env`: optional environment variables added to the inherited
-  environment.
+- `[[servers]].env`: optional environment variables added to the MCP SDK's
+  default safe environment.
 - `[[servers.aliases]]`: optional exposed aliases that route to another exposed
   tool.
 

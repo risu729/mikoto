@@ -57,8 +57,14 @@ exposed.
 
 ## Browser Read Policy
 
-Browser reads are read-only. Requests that ask for mutation or secret inspection
-should be rejected before routing, not only filtered after execution.
+The relay and bridge do not interpret natural-language tool arguments or apply
+a browser-specific policy. The bundled Codex browser tool turns each request
+into read-only instructions and starts Codex with a read-only sandbox. It must
+reject mutation and secret-inspection requests rather than attempting them.
+
+Other configured backends are responsible for enforcing their own safety
+policies. Operators should expose only backends whose full advertised tool set
+is appropriate for remote use.
 
 Browser read tools must not return raw HTML, raw DOM dumps, screenshots,
 cookies, storage, tokens, or broad page dumps.

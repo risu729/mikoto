@@ -1,8 +1,10 @@
 #:schema https://mise.jdx.dev/schema/mise.json
 
 [tasks.run]
-description = "Run the local bridge scaffold."
-run = "bun src/index.ts"
+description = "Run the local bridge."
+# Keep mikoto.toml and configured backend paths relative to the repository root.
+dir = "../.."
+run = "bun packages/bridge/src/index.ts"
 
 [tasks.compile]
 description = "Compile the local bridge for a target platform."

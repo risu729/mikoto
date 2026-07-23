@@ -43,8 +43,8 @@ metadata.
 ## Routing
 
 Backend tools are exposed with backend-prefixed names such as
-`codex.codex_chrome_read`. Configured aliases may expose shorter names such as
-`local_chrome_read`.
+`codex.codex_chrome_read_start`. Configured aliases may expose shorter names
+such as `local_chrome_read_start`.
 
 Tool names do not include bridge names. A caller may omit bridge selection only
 when exactly one connected bridge exposes the requested tool. If multiple
