@@ -13,8 +13,8 @@ hero:
       link: https://github.com/risu729/mikoto
       variant: minimal
   image:
-    alt: Diagram showing ChatGPT connecting to Mikoto relay, local bridge, and configured local MCPs.
-    file: ../../assets/hero-diagram.png
+    alt: Mikoto logo
+    file: ../../../public/favicon.svg
 template: splash
 title: Overview
 ---
