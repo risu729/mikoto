@@ -53,11 +53,30 @@ jobs:
       - name: Test
         run: mise run test
   build:
-    name: Build
-    runs-on: ubuntu-24.04
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 15
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x64
+            runner: ubuntu-24.04
+            target: linux-x64
+            bridge_binary: ./dist/mikoto-bridge-linux-x64
+            codex_binary: ./dist/mikoto-codex-mcp-linux-x64
+          - name: macOS arm64
+            runner: macos-latest
+            target: macos-arm64
+            bridge_binary: ./dist/mikoto-bridge-macos-arm64
+            codex_binary: ./dist/mikoto-codex-mcp-macos-arm64
+          - name: Windows x64
+            runner: windows-latest
+            target: windows-x64
+            bridge_binary: ./dist/mikoto-bridge-windows-x64.exe
+            codex_binary: ./dist/mikoto-codex-mcp-windows-x64.exe
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -67,12 +86,47 @@ jobs:
         uses: jdx/mise-action@dad1bfd3df957f44999b559dd69dc1671cb4e9ea # v4.2.1
         with:
           version: 2026.7.12
-      - name: Compile
-        run: mise run compile
-      - name: Check compiled versions
+      - name: Compile binaries
+        if: runner.os != 'Windows'
         run: |
-          test "$(dist/mikoto-bridge-linux-x64 --version)" = "0.0.0-development"
-          test "$(dist/mikoto-codex-mcp-linux-x64 --version)" = "0.0.0-development"
+          mise //packages/bridge:compile --target "${COMPILE_TARGET}"
+          mise //packages/codex-mcp:compile --target "${COMPILE_TARGET}"
+        env:
+          COMPILE_TARGET: ${{ matrix.target }}
+      - name: Smoke test binaries
+        if: runner.os != 'Windows'
+        run: |
+          for binary in "${BRIDGE_BINARY}" "${CODEX_BINARY}"; do
+            test -f "${binary}"
+            test "$("${binary}" --version)" = "0.0.0-development"
+          done
+        env:
+          BRIDGE_BINARY: ${{ matrix.bridge_binary }}
+          CODEX_BINARY: ${{ matrix.codex_binary }}
+      - name: Compile binaries
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          mise //packages/bridge:compile --target $env:COMPILE_TARGET
+          mise //packages/codex-mcp:compile --target $env:COMPILE_TARGET
+        env:
+          COMPILE_TARGET: ${{ matrix.target }}
+      - name: Smoke test binaries
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          foreach ($Binary in @($env:BRIDGE_BINARY, $env:CODEX_BINARY)) {
+            if (-not (Test-Path -PathType Leaf $Binary)) {
+              throw "Expected binary does not exist: $Binary"
+            }
+            $Version = & $Binary --version
+            if ($Version -ne "0.0.0-development") {
+              throw "Unexpected binary version from ${Binary}: $Version"
+            }
+          }
+        env:
+          BRIDGE_BINARY: ${{ matrix.bridge_binary }}
+          CODEX_BINARY: ${{ matrix.codex_binary }}
   relay-test:
     name: Relay Test
     runs-on: ubuntu-24.04
