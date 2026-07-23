@@ -13,15 +13,24 @@ from the bridge so Codex remains one backend rather than the whole gateway.
 - launches and owns a local Codex app-server process;
 - creates a fresh Codex thread for each MCP tool call;
 - runs bounded app-server turns;
-- returns one final normalized JSON result;
+- keeps running task state in memory for later polling;
+- returns normalized partial and final JSON results;
 - interrupts active turns on timeout where supported;
 - exposes backend-specific safe tools instead of raw app-server JSON-RPC.
 
-Expected tools:
+Exposed tools:
 
-- `codex_task`: run a bounded read-only Codex task.
-- `codex_chrome_read`: run a bounded read-only browser read request through
+- `codex_task_start`: start a bounded read-only Codex task.
+- `codex_chrome_read_start`: start a bounded read-only browser request through
   Codex and the official `@Chrome` integration.
+- `codex_run_status`: return status, partial text, and normalized items.
+- `codex_run_result`: return the final result after completion.
+- `codex_run_cancel`: request interruption of a running task.
+
+Start tools return a task snapshot quickly. Pass its `task.id` as the `taskId`
+input to the status, result, or cancel tool in a later call. The bridge exposes
+these names with the configured backend prefix, such as
+`codex.codex_run_status`.
 
 ## Browser Reads
 
@@ -32,7 +41,7 @@ without receiving raw browser internals.
 
 Browser read tools must not:
 
-- click, type, submit, navigate destructively, or mutate state;
+- mutate browser or remote state;
 - inspect cookies, tokens, local storage, session storage, or other secrets;
 - return raw HTML, raw DOM dumps, screenshots, storage contents, or broad page
   dumps.

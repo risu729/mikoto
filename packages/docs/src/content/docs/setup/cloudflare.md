@@ -4,7 +4,13 @@ title: Cloudflare Setup
 ---
 
 This page covers only Cloudflare setup for a deployed relay. Local development
-commands live in the root and package `README.md` files.
+commands live in the root and package `README.md` files. The hostnames and
+account-specific names below describe the project deployment; substitute the
+custom domains, Access team domain, policies, and account names chosen for
+another deployment.
+
+Follow [Get Started](/getting-started/) for the surrounding repository, bridge,
+and ChatGPT configuration steps.
 
 ## Services
 

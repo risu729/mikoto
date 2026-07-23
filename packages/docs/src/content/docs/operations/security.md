@@ -37,10 +37,23 @@ internet-reachable.
 - bridge OS;
 - connection status;
 - last heartbeat time;
-- exposed tool names.
+- exposed tool names and input schemas.
 
 It must not return secrets, local paths, environment variables, raw backend
 config, raw tool arguments, or tool results.
+
+## Backend Boundary
+
+The bridge starts and routes only the MCP servers explicitly listed in
+`mikoto.toml`. It does not auto-discover local servers. Configuring a backend
+grants remote callers access to every tool that backend advertises, plus any
+configured aliases, so operators must review a backend's behavior before
+exposing it.
+
+The relay exposes only two fixed ChatGPT-facing tools:
+`mikoto_list_bridges` and `mikoto_call_tool`. Backend tool metadata guides
+calls through that bounded dispatcher; raw backend MCP protocol methods are not
+exposed.
 
 ## Browser Read Policy
 
@@ -52,7 +65,7 @@ cookies, storage, tokens, or broad page dumps.
 
 ## Logging
 
-Bridge and relay logs are stdout-only for the MVP. Logs should include
-operational metadata such as component, bridge id, tool name, status, duration,
-and error code. They should not log full tool arguments or full tool results by
-default.
+Bridge and relay application logs are stdout-only. Cloudflare Workers logs and
+traces are enabled for the deployed relay. Logs should include operational
+metadata such as component, bridge id, tool name, status, duration, and error
+code. They should not log full tool arguments or full tool results by default.

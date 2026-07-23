@@ -3,7 +3,7 @@ description: Local bridge responsibilities and routing model.
 title: Bridge
 ---
 
-The bridge is a local process. It is not a webserver for the MVP. It connects
+The bridge is a local process. It does not expose a webserver. It connects
 outbound to the relay over WebSocket and routes relay tool calls to explicitly
 configured backend MCP servers.
 
@@ -45,5 +45,8 @@ unimplemented error.
 
 Run and compile commands for local development live in the
 [`packages/bridge` README][bridge-readme].
+
+For the complete configuration and connection flow, see
+[Get Started](/getting-started/).
 
 [bridge-readme]: https://github.com/risu729/mikoto/blob/main/packages/bridge/README.md
