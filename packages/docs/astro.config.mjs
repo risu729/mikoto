@@ -11,6 +11,7 @@ export default defineConfig({
 				{
 					items: [
 						{ label: "Overview", slug: "" },
+						{ label: "Get Started", slug: "getting-started" },
 						{ label: "Motivation", slug: "motivation" },
 						{ label: "Architecture", slug: "architecture" },
 						{ label: "Configuration", slug: "configuration" },
@@ -38,6 +39,13 @@ export default defineConfig({
 					label: "Operations",
 				},
 			],
+			social: [
+				{
+					href: "https://github.com/risu729/mikoto",
+					icon: "github",
+					label: "GitHub",
+				},
+			],
 			title: "Mikoto",
 		}),
 	],
@@ -46,4 +54,5 @@ export default defineConfig({
 			rehypePlugins: [[rehypeMermaid, { dark: false, strategy: "img-svg" }]],
 		}),
 	},
+	site: "https://mikoto.takuk.me",
 });

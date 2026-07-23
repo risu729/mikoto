@@ -19,7 +19,7 @@ The relay:
 - rejects duplicate connected bridge ids;
 - returns bridge-selection, ambiguity, busy, timeout, and connection-lost
   errors;
-- keeps stdout logs for MVP diagnostics.
+- writes application diagnostics to stdout.
 
 The relay does not discover local MCP servers and does not know Codex execution
 internals.
@@ -43,14 +43,14 @@ metadata.
 ## Routing
 
 Backend tools are exposed with backend-prefixed names such as
-`codex.codex_chrome_read`. Configured aliases may expose shorter names such as
-`local_chrome_read`.
+`codex.codex_chrome_read_start`. Configured aliases may expose shorter names
+such as `local_chrome_read_start`.
 
 Tool names do not include bridge names. A caller may omit bridge selection only
 when exactly one connected bridge exposes the requested tool. If multiple
-bridges expose the same tool, the caller must select one with MCP request
-`_meta["mikoto/bridgeId"]`.
+bridges expose the same tool, the caller must pass `bridgeId` to
+`mikoto_call_tool`.
 
-For the MVP, each bridge handles one tool call at a time. Concurrent calls to
-the same bridge receive a clear bridge-busy error. Tool calls have a fixed
+Each bridge handles one tool call at a time. Concurrent calls to the same bridge
+receive a clear `bridge_busy` error. Tool calls have a fixed
 5-minute wall-clock timeout.

@@ -2,13 +2,16 @@
 description: What Mikoto is and who it is for.
 hero:
   title: Mikoto
-  tagline: An early-stage local MCP gateway for using ChatGPT with explicitly configured local MCP servers through a Cloudflare relay.
+  tagline: Connect ChatGPT to explicitly configured local MCP servers without exposing an inbound local HTTP server.
   actions:
-    - text: Why Mikoto
-      link: /motivation/
+    - text: Get Started
+      link: /getting-started/
     - text: Cloudflare Setup
       link: /setup/cloudflare/
       variant: secondary
+    - text: View on GitHub
+      link: https://github.com/risu729/mikoto
+      variant: minimal
   image:
     alt: Diagram showing ChatGPT connecting to Mikoto relay, local bridge, and configured local MCPs.
     file: ../../assets/hero-diagram.png
@@ -16,17 +19,26 @@ template: splash
 title: Overview
 ---
 
-The MVP goal is a general-purpose, read-only Codex browser read tool. ChatGPT
-should be able to ask for structured information from an allowed local browser
-context through bounded Codex CLI tasks and the official `@Chrome` integration,
-without direct browser control, raw HTML or DOM access, cookies, storage,
-tokens, or raw Codex internals.
+Mikoto is a gateway between a ChatGPT App and local MCP servers chosen by the
+operator. A Cloudflare Worker exposes the remote MCP endpoint, while a local
+bridge connects outbound to the relay and routes calls only to backends listed
+in `mikoto.toml`.
 
-## Status
+Because the bridge initiates the connection, the local computer does not need
+an inbound HTTP server or public port. Cloudflare Access protects the
+ChatGPT-facing endpoint with Managed OAuth and separately restricts bridge
+connections to trusted local computers.
 
-The repository has an early local development path for the relay, bridge, and
-Codex MCP server. The docs and relay production deployment paths are managed by
-GitHub Actions.
+## Local Codex Example
+
+The repository includes `mikoto-codex-mcp`, an optional backend that provides
+asynchronous read-only Codex tasks and browser reads through the official
+`@Chrome` integration. It returns bounded, structured results without exposing
+raw HTML, DOM dumps, screenshots, cookies, storage, tokens, or raw Codex
+app-server methods.
+
+Codex is one example backend. Mikoto can route tools from other explicitly
+configured stdio MCP servers without teaching the bridge their internals.
 
 ## Intended Users
 
@@ -38,11 +50,13 @@ GitHub Actions.
 
 ## Where To Go Next
 
+- Follow [Get Started](/getting-started/) for the complete path from deployment
+  to a first tool call.
 - Read [Motivation](/motivation/) for the product framing.
 - Read [Architecture](/architecture/) for the relay, bridge, and backend split.
-- Read [Cloudflare Setup](/setup/cloudflare/) for deployed relay prerequisites.
+- Read [Configuration](/configuration/) for the published schema and backend
+  examples.
 - Read [Security](/operations/security/) for the Access and browser-read
   boundaries.
-
-Local development commands live in the repository and package `README.md`
-files. These docs focus on durable product, setup, and operations guidance.
+- Browse the [source repository](https://github.com/risu729/mikoto) for local
+  development commands and package details.
