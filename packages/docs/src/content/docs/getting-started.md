@@ -55,8 +55,10 @@ through the relay:
 - a self-hosted, WARP-restricted application on the bridge hostname.
 
 The exact application settings and ChatGPT redirect URI are documented in
-[Cloudflare Setup](/setup/cloudflare/). Keeping the hostnames separate prevents
-the ChatGPT OAuth login from being mistaken for the bridge's private-app flow.
+[Cloudflare Setup](/setup/cloudflare/). Keep the hostnames separate to preserve
+independent Access boundaries for ChatGPT and the local bridge. This separation
+does not work around the current
+[WARP-connected OAuth limitation][warp-oauth-limit].
 
 Add these GitHub Actions settings to the deployment repository:
 
@@ -131,7 +133,9 @@ Create a custom ChatGPT App with:
 
 Complete settings and troubleshooting steps are under
 [ChatGPT App Setup](/setup/cloudflare/#chatgpt-app-setup). After creation,
-select **Sign in with Mikoto** and complete the Cloudflare Access login.
+select **Sign in with Mikoto** and complete the Cloudflare Access login. If the
+browser is connected through WARP/Gateway, follow the documented
+[disconnect-login-reconnect workaround][warp-oauth-limit].
 
 ## 6. Make A First Tool Call
 
@@ -178,3 +182,5 @@ The example configuration already points to
 `ws://localhost:8787/bridge`. The local MCP endpoint is
 `http://localhost:8787/`, but ChatGPT cannot connect directly to a service on
 your local computer; use the deployed path for the ChatGPT integration.
+
+[warp-oauth-limit]: /setup/cloudflare/#warp-connected-oauth-login
