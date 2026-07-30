@@ -11,7 +11,7 @@
 	},
 	"dependencies": {
 		"@mikoto/protocol": "workspace:*",
-		"@modelcontextprotocol/sdk": "1.29.0",
+		"@modelcontextprotocol/sdk": "1.30.0",
 		"@sindresorhus/is": "8.1.0",
 		"execa": "10.0.0",
 		"luxon": "3.7.2",
