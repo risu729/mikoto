@@ -12,6 +12,6 @@
 	"dependencies": {
 		"@mikoto/protocol": "workspace:*",
 		"@modelcontextprotocol/sdk": "1.30.0",
-		"smol-toml": "1.7.1"
+		"smol-toml": "1.7.2"
 	}
 }
