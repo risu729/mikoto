@@ -9,7 +9,7 @@
 	"dependencies": {
 		"@mikoto/protocol": "workspace:*",
 		"@modelcontextprotocol/sdk": "1.30.0",
-		"hono": "4.13.2",
+		"hono": "4.13.3",
 		"zod": "4.4.3"
 	},
 	"devDependencies": {
