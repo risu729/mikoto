@@ -29,6 +29,9 @@ case "${usage_target}" in
     ;;
 esac
 
+# bun build does not create the --outfile parent directory on Windows.
+mkdir -p "$(dirname "${outfile}")"
+
 bun build --compile --target="${bun_target}" \
   --define "MIKOTO_BUILD_VERSION=${build_version_define}" \
   --outfile="${outfile}" \
