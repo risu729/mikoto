@@ -30,6 +30,9 @@ switch ($Target) {
   }
 }
 
+# bun build does not create the --outfile parent directory on Windows.
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $OutputPath) | Out-Null
+
 bun build --compile "--target=$BunTarget" "--define=MIKOTO_BUILD_VERSION=$VersionDefine" "--outfile=$OutputPath" src/index.ts
 if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
