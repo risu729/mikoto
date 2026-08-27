@@ -9,7 +9,7 @@
 		"@risu729/tsconfigs": "3.0.0",
 		"@semantic-release/exec": "7.1.0",
 		"@types/bun": "1.4.0",
-		"@types/node": "26.2.0",
+		"@types/node": "26.3.0",
 		"ajv": "8.20.0",
 		"vitest": "4.1.11",
 		"wrangler": "4.125.0"
