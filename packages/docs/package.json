@@ -5,7 +5,7 @@
 	"type": "module",
 	"dependencies": {
 		"@astrojs/markdown-remark": "7.2.4",
-		"@astrojs/starlight": "0.41.8",
+		"@astrojs/starlight": "0.41.9",
 		"astro": "7.2.6",
 		"playwright": "1.62.1",
 		"rehype-mermaid": "3.0.0",
