@@ -11,7 +11,7 @@ config_roots = [
 ]
 
 [tools]
-bun = "1.4.1"
+bun = "1.4.2"
 node = "26.8.1"
 wrangler = "4.128.0"
 "npm:typescript" = "7.0.2"
