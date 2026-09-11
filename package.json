@@ -8,7 +8,7 @@
 	"devDependencies": {
 		"@risu729/tsconfigs": "3.0.0",
 		"@semantic-release/exec": "7.1.0",
-		"@types/bun": "1.4.1",
+		"@types/bun": "1.4.2",
 		"@types/node": "26.5.0",
 		"ajv": "8.20.0",
 		"vitest": "4.1.11",
