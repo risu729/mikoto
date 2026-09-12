@@ -11,7 +11,7 @@
 		"@types/bun": "1.4.2",
 		"@types/node": "26.5.0",
 		"ajv": "8.20.0",
-		"vitest": "4.1.11",
+		"vitest": "5.0.0",
 		"wrangler": "4.130.0"
 	},
 	"packageManager": "bun@1.4.2"
