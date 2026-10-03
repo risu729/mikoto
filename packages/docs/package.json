@@ -9,6 +9,6 @@
 		"astro": "7.3.5",
 		"playwright": "1.63.0",
 		"rehype-mermaid": "3.0.0",
-		"sharp": "0.35.4"
+		"sharp": "0.35.5"
 	}
 }
