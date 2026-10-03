@@ -18,7 +18,7 @@ wrangler = "4.141.0"
 "npm:semantic-release" = "25.0.9"
 hk = "2.4.0"
 oxlint = "1.72.0"
-oxfmt = "0.70.0"
+oxfmt = "0.71.0"
 actionlint = "1.7.12"
 # required for actionlint
 shellcheck = "0.11.0"
