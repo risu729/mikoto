@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: mise deps
       - name: Deploy relay
-        uses: risu729/wrangler-deploy-action@e943f9681fb250fa0d0a104bd95ea121c510d192 # v1.2.0
+        uses: risu729/wrangler-deploy-action@db82fbec0db564950f5c319292aab124896d74f3 # v2.0.0
         with:
           mode: production
           working-directory: packages/relay
